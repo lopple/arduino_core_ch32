@@ -59,7 +59,23 @@ extern int digitalRead(uint32_t ulPin) ;
 extern void digitalToggle(uint32_t ulPin) ;
 
 #ifdef __cplusplus
-}
+} // close extern "C"
+
+#if defined(CH32V00x)
+#include "digital_io.h"
+
+// Define macros to bypass runtime lookup when arguments are compile-time constants
+#define digitalWrite(pin, val) \
+  (__builtin_constant_p(pin) ? digitalWriteFast(digitalPinToPinName(pin), val) : (digitalWrite)(pin, val))
+
+#define digitalRead(pin) \
+  (__builtin_constant_p(pin) ? digitalReadFast(digitalPinToPinName(pin)) : (digitalRead)(pin))
+
+#define digitalToggle(pin) \
+  (__builtin_constant_p(pin) ? digitalToggleFast(digitalPinToPinName(pin)) : (digitalToggle)(pin))
+#endif
+
+#else // C
 #endif
 
 #endif /* _WIRING_DIGITAL_ */
