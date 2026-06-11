@@ -101,6 +101,7 @@ size_t Print::print(unsigned long n, int base)
   }
 }
 
+#if !defined(CORE_LIGHTWEIGHT_PRINT_NO_ULL)
 size_t Print::print(long long n, int base)
 {
   if (base == 0) {
@@ -125,11 +126,14 @@ size_t Print::print(unsigned long long n, int base)
     return printULLNumber(n, base);
   }
 }
+#endif
 
+#if !defined(CORE_LIGHTWEIGHT_PRINT_NO_FLOAT)
 size_t Print::print(double n, int digits)
 {
   return printFloat(n, digits);
 }
+#endif
 
 size_t Print::println(const __FlashStringHelper *ifsh)
 {
@@ -204,6 +208,7 @@ size_t Print::println(unsigned long num, int base)
   return n;
 }
 
+#if !defined(CORE_LIGHTWEIGHT_PRINT_NO_ULL)
 size_t Print::println(long long num, int base)
 {
   size_t n = print(num, base);
@@ -217,13 +222,16 @@ size_t Print::println(unsigned long long num, int base)
   n += println();
   return n;
 }
+#endif
 
+#if !defined(CORE_LIGHTWEIGHT_PRINT_NO_FLOAT)
 size_t Print::println(double num, int digits)
 {
   size_t n = print(num, digits);
   n += println();
   return n;
 }
+#endif
 
 size_t Print::println(const Printable &x)
 {
@@ -348,6 +356,7 @@ void Print::printULLNumber(uint64_t n, uint8_t base)
 // return write(str);
 // }
 
+#if !defined(CORE_LIGHTWEIGHT_PRINT_NO_ULL)
 // FAST IMPLEMENTATION FOR ULL
 size_t Print::printULLNumber(unsigned long long n64, uint8_t base)
 {
@@ -404,7 +413,9 @@ size_t Print::printULLNumber(unsigned long long n64, uint8_t base)
   }
   return bytes;
 }
+#endif
 
+#if !defined(CORE_LIGHTWEIGHT_PRINT_NO_FLOAT)
 size_t Print::printFloat(double number, uint8_t digits)
 {
   size_t n = 0;
@@ -456,3 +467,4 @@ size_t Print::printFloat(double number, uint8_t digits)
 
   return n;
 }
+#endif

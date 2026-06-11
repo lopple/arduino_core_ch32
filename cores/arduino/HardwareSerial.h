@@ -103,7 +103,16 @@ class HardwareSerial : public Stream {
 
   serial_t _serial;  
 public:
+#if defined(CORE_LIGHTWEIGHT_PRINT)
+    static size_t serial_write_wrapper(void* ctx, uint8_t c);
+    static int serial_available_wrapper(void* ctx);
+    static int serial_read_wrapper(void* ctx);
+    static int serial_peek_wrapper(void* ctx);
+
+    HardwareSerial(void *peripheral);
+#else
     HardwareSerial(void *peripheral); 
+#endif
     
     void begin(unsigned long baud)
     {
@@ -112,13 +121,17 @@ public:
     void begin(unsigned long, uint8_t);
     void end();
 
+#if defined(CORE_LIGHTWEIGHT_PRINT)
+    int available(void);
+    int peek(void);
+    int read(void);
+    size_t write(uint8_t);
+#else
     virtual int available(void);
     virtual int peek(void);
     virtual int read(void);
-
-
-    
     virtual size_t write(uint8_t);
+#endif
     inline size_t write(unsigned long n)
     {
       return write((uint8_t)n);

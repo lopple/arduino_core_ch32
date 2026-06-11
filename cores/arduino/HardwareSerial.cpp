@@ -30,6 +30,32 @@
 #if defined(UART_MODULE_ENABLED) && !defined(UART_MODULE_ONLY)
 
 
+#if defined(CORE_LIGHTWEIGHT_PRINT)
+size_t HardwareSerial::serial_write_wrapper(void* ctx, uint8_t c) {
+  return ((HardwareSerial*)ctx)->write(c);
+}
+int HardwareSerial::serial_available_wrapper(void* ctx) {
+  return ((HardwareSerial*)ctx)->available();
+}
+int HardwareSerial::serial_read_wrapper(void* ctx) {
+  return ((HardwareSerial*)ctx)->read();
+}
+int HardwareSerial::serial_peek_wrapper(void* ctx) {
+  return ((HardwareSerial*)ctx)->peek();
+}
+
+HardwareSerial::HardwareSerial(void *peripheral)
+  : Stream(serial_write_wrapper, this, serial_available_wrapper, serial_read_wrapper, serial_peek_wrapper)
+{
+  setHandler(peripheral);
+
+  setRx(PIN_SERIAL_RX);
+  
+  setTx(PIN_SERIAL_TX);
+  
+  init(_serial.pin_rx, _serial.pin_tx);
+}
+#else
 HardwareSerial::HardwareSerial(void *peripheral)
 {
   setHandler(peripheral);
@@ -40,6 +66,7 @@ HardwareSerial::HardwareSerial(void *peripheral)
   
   init(_serial.pin_rx, _serial.pin_tx);
 }
+#endif
 
 
 
