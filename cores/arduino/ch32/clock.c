@@ -53,17 +53,16 @@ uint32_t getCurrentMillis(void)
 
 uint32_t getCurrentMicros(void)
 {
-  
-  uint64_t m0 = GetTick();
-  __IO uint64_t u0 = SysTick->CNT;
-  uint64_t m1 = GetTick();
-  __IO uint32_t u1 = SysTick->CNT;   //may be a interruption
-   uint64_t tms = SysTick->CMP + 1;
+  uint32_t m0 = (uint32_t)GetTick();
+  uint32_t u0 = (uint32_t)SysTick->CNT;
+  uint32_t m1 = (uint32_t)GetTick();
+  uint32_t u1 = (uint32_t)SysTick->CNT;   //may be a interruption
+  uint32_t tms = (uint32_t)SysTick->CMP + 1;
 
   if (m1 != m0) {
-    return m1 * 1000 + u1 * 1000 / tms;  // fix #65 - micros() is non-monotonic 
+    return m1 * 1000 + (u1 * 1000) / tms;
   } else {
-    return m0 * 1000 + u0 * 1000 / tms;  // fix #65 - micros() is non-monotonic 
+    return m0 * 1000 + (u0 * 1000) / tms;
   }
 }
 
@@ -99,22 +98,16 @@ void SysTick_Handler(void)
 
 uint32_t getCurrentMicros(void)
 {
-  
-  uint64_t m0 = GetTick();
-  uint64_t u0 = *((__IO uint32_t *)SYSTICK_CNTH);  
-           u0 = (u0 << 32) + *((__IO uint32_t *)SYSTICK_CNTL);
-  
-  uint64_t m1 = GetTick();
-  uint64_t u1 = *((__IO uint32_t *)SYSTICK_CNTH); //may be a interruption
-           u1 = (u1 << 32) + *((__IO uint32_t *)SYSTICK_CNTL);
-
-  uint64_t tms = *((__IO uint32_t *)SYSTICK_CMPH);
-           tms = (tms << 32) + *((__IO uint32_t *)SYSTICK_CMPL) + 1;     
+  uint32_t m0 = (uint32_t)GetTick();
+  uint32_t u0 = *((__IO uint32_t *)SYSTICK_CNTL);
+  uint32_t m1 = (uint32_t)GetTick();
+  uint32_t u1 = *((__IO uint32_t *)SYSTICK_CNTL); //may be a interruption
+  uint32_t tms = *((__IO uint32_t *)SYSTICK_CMPL) + 1;
 
   if (m1 != m0) {
-    return m1 * 1000 + u1 * 1000 / tms;  // fix #65 - micros() is non-monotonic 
+    return m1 * 1000 + (u1 * 1000) / tms;
   } else {
-    return m0 * 1000 + u0 * 1000 / tms;  // fix #65 - micros() is non-monotonic 
+    return m0 * 1000 + (u0 * 1000) / tms;
   }
 }
 
