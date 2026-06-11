@@ -261,6 +261,159 @@ extern "C" {
   }
 }
 
+#if defined(CORE_LIGHTWEIGHT_PRINT)
+int Print::printf(const char *format, ...)
+{
+  va_list ap;
+  va_start(ap, format);
+  int retval = vprintf(format, ap);
+  va_end(ap);
+  return retval;
+}
+
+int Print::printf(const __FlashStringHelper *format, ...)
+{
+  va_list ap;
+  va_start(ap, format);
+  int retval = vprintf(reinterpret_cast<const char *>(format), ap);
+  va_end(ap);
+  return retval;
+}
+
+int Print::vprintf(const __FlashStringHelper *format, va_list ap)
+{
+  return vprintf(reinterpret_cast<const char *>(format), ap);
+}
+
+int Print::vprintf(const char *format, va_list ap)
+{
+  int count = 0;
+  char c;
+  while ((c = *format++)) {
+    if (c != '%') {
+      write(c);
+      count++;
+      continue;
+    }
+    
+    c = *format++;
+    if (c == '\0') break;
+    
+    bool zero_pad = false;
+    int width = 0;
+    if (c == '0') {
+      zero_pad = true;
+      c = *format++;
+    }
+    while (c >= '0' && c <= '9') {
+      width = width * 10 + (c - '0');
+      c = *format++;
+    }
+    
+    bool is_long = false;
+    if (c == 'l') {
+      is_long = true;
+      c = *format++;
+    }
+    
+    switch (c) {
+      case '%':
+        write('%');
+        count++;
+        break;
+      case 'c': {
+        char val = (char)va_arg(ap, int);
+        write(val);
+        count++;
+        break;
+      }
+      case 's': {
+        const char *s = va_arg(ap, const char*);
+        if (!s) s = "(null)";
+        while (*s) {
+          write(*s++);
+          count++;
+        }
+        break;
+      }
+      case 'd':
+      case 'i': {
+        long val = is_long ? va_arg(ap, long) : va_arg(ap, int);
+        if (val < 0) {
+          write('-');
+          count++;
+          val = -val;
+        }
+        char buf[32];
+        int idx = 0;
+        unsigned long uval = val;
+        do {
+          buf[idx++] = (uval % 10) + '0';
+          uval /= 10;
+        } while (uval > 0);
+        
+        while (idx < width) {
+          write(zero_pad ? '0' : ' ');
+          count++;
+          width--;
+        }
+        while (idx > 0) {
+          write(buf[--idx]);
+          count++;
+        }
+        break;
+      }
+      case 'u': {
+        unsigned long val = is_long ? va_arg(ap, unsigned long) : va_arg(ap, unsigned int);
+        char buf[32];
+        int idx = 0;
+        do {
+          buf[idx++] = (val % 10) + '0';
+          val /= 10;
+        } while (val > 0);
+        while (idx < width) {
+          write(zero_pad ? '0' : ' ');
+          count++;
+          width--;
+        }
+        while (idx > 0) {
+          write(buf[--idx]);
+          count++;
+        }
+        break;
+      }
+      case 'x':
+      case 'X': {
+        unsigned long val = is_long ? va_arg(ap, unsigned long) : va_arg(ap, unsigned int);
+        char buf[32];
+        int idx = 0;
+        char hex_base = (c == 'x') ? 'a' : 'A';
+        do {
+          int digit = val & 0xF;
+          buf[idx++] = (digit < 10) ? (digit + '0') : (digit - 10 + hex_base);
+          val >>= 4;
+        } while (val > 0);
+        while (idx < width) {
+          write(zero_pad ? '0' : ' ');
+          count++;
+          width--;
+        }
+        while (idx > 0) {
+          write(buf[--idx]);
+          count++;
+        }
+        break;
+      }
+      default:
+        write('%');
+        write(c);
+        count += 2;
+        break;
+    }
+  }
+  return count;
+}
+#else
 int Print::printf(const char *format, ...)
 {
   va_list ap;
@@ -288,6 +441,7 @@ int Print::vprintf(const __FlashStringHelper *format, va_list ap)
 {
   return vdprintf((int)this, (const char *)format, ap);
 }
+#endif
 
 
 // Private Methods /////////////////////////////////////////////////////////////
