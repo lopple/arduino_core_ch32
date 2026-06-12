@@ -25,6 +25,7 @@ extern "C" {
 
 
 __IO uint64_t msTick=0;
+uint32_t SystemCoreClock_MHz_inv = 0;
 WEAK uint64_t GetTick(void)
 {
   return msTick;
@@ -53,16 +54,19 @@ uint32_t getCurrentMillis(void)
 
 uint32_t getCurrentMicros(void)
 {
+  if (SystemCoreClock_MHz_inv == 0) {
+    SystemCoreClock_MHz_inv = (uint32_t)((1ULL << 32) / (SystemCoreClock / 1000000));
+  }
+
   uint32_t m0 = (uint32_t)GetTick();
   uint32_t u0 = (uint32_t)SysTick->CNT;
   uint32_t m1 = (uint32_t)GetTick();
   uint32_t u1 = (uint32_t)SysTick->CNT;   //may be a interruption
-  uint32_t tms = (uint32_t)SysTick->CMP + 1;
 
   if (m1 != m0) {
-    return m1 * 1000 + (u1 * 1000) / tms;
+    return m1 * 1000 + (uint32_t)(((uint64_t)u1 * SystemCoreClock_MHz_inv) >> 32);
   } else {
-    return m0 * 1000 + (u0 * 1000) / tms;
+    return m0 * 1000 + (uint32_t)(((uint64_t)u0 * SystemCoreClock_MHz_inv) >> 32);
   }
 }
 
@@ -98,16 +102,19 @@ void SysTick_Handler(void)
 
 uint32_t getCurrentMicros(void)
 {
+  if (SystemCoreClock_MHz_inv == 0) {
+    SystemCoreClock_MHz_inv = (uint32_t)((1ULL << 32) / (SystemCoreClock / 8000000));
+  }
+
   uint32_t m0 = (uint32_t)GetTick();
   uint32_t u0 = *((__IO uint32_t *)SYSTICK_CNTL);
   uint32_t m1 = (uint32_t)GetTick();
   uint32_t u1 = *((__IO uint32_t *)SYSTICK_CNTL); //may be a interruption
-  uint32_t tms = *((__IO uint32_t *)SYSTICK_CMPL) + 1;
 
   if (m1 != m0) {
-    return m1 * 1000 + (u1 * 1000) / tms;
+    return m1 * 1000 + (uint32_t)(((uint64_t)u1 * SystemCoreClock_MHz_inv) >> 32);
   } else {
-    return m0 * 1000 + (u0 * 1000) / tms;
+    return m0 * 1000 + (uint32_t)(((uint64_t)u0 * SystemCoreClock_MHz_inv) >> 32);
   }
 }
 
