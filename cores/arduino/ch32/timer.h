@@ -92,7 +92,7 @@ typedef struct
 {
   TIM_TypeDef                          *Instance;         
   TIM_TimeBaseInitTypeDef               Init;     
-  TIM_ActiveChannel                     Channel;   //ÊÇ·ñÐèÒª£¿
+  TIM_ActiveChannel                     Channel;   // Is it needed?
   /*    //Not yet considered          
   TIM_OCInitTypeDef                     OC_Init;
   TIM_ICInitTypeDef                     IC_Init;

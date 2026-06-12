@@ -384,7 +384,7 @@ uint32_t get_adc_channel(PinName pin)
   * @brief  Return ADC HAL internal channel linked to a PinName
   * @param  pin: specific PinName's for ADC internal. Value can be:
   *         PADC_TEMP, PADC_TEMP_ADC5, PADC_VREF, PADC_VBAT
-  *         Note that not all of these values ​​may be available for all series.
+  *         Note that not all of these values may be available for all series.
   * @retval Valid HAL internal channel.
   */
 uint32_t get_adc_internal_channel(PinName pin)
