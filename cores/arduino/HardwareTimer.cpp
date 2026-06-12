@@ -157,7 +157,7 @@ void HardwareTimer::setup(TIM_TypeDef *instance)
   // Initialize channel mode and complementary
   for (int i = 0; i < TIMER_CHANNELS; i++) {
 #if defined(TIM_CC1NE)
-    isComplementaryChannel[i] = false;  //如果有互补通道定义
+    isComplementaryChannel[i] = false;  // If complementary channel is defined
 #endif
     _ChannelMode[i] = TIMER_DISABLED;    
   }
@@ -479,7 +479,7 @@ void HardwareTimer::resumeChannel(uint32_t channel)
     case TIMER_INPUT_FREQ_DUTY_MEASUREMENT: {
         TIM_CCxCmd( _timerObj.handle.Instance, timChannel, TIM_CCx_Enable );
         // Enable 2nd associated channel
-        //两个关联通道，配置为捕获通道   1 & 2  /  3 & 4        
+        // Two associated channels, configured as capture channels 1 & 2 / 3 & 4
         timAssociatedInputChannel = getAssociatedChannel(channel);
         TIM_CCxCmd( _timerObj.handle.Instance, getLLChannel(timAssociatedInputChannel), TIM_CCx_Enable );
        
