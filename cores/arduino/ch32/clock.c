@@ -20,26 +20,22 @@ extern "C" {
 #endif
 
 #define TICK_FREQ_1KHz    1L
-// #define TICK_FREQ_100Hz   10L
-// #define TICK_FREQ_10Hz    100L 
-
 
 __IO uint64_t msTick=0;
 uint32_t SystemCoreClock_MHz_inv = 0;
+
 WEAK uint64_t GetTick(void)
 {
   return msTick;
 }
 
-
 void osSystickHandler() __attribute__((weak, alias("noOsSystickHandler")));
 void noOsSystickHandler()
 {
-
 }
 
 /**
-  * @brief  Function called wto read the current millisecond
+  * @brief  Function called to read the current millisecond
   * @param  None
   * @retval None
   */
@@ -48,23 +44,36 @@ uint32_t getCurrentMillis(void)
   return GetTick();
 }
 
+#if defined(CH32V10x)
+  #define SYSTICK_CNTL    (0xE000F004)   
+  #define SYSTICK_CNTH    (0xE000F008)
+  #define SYSTICK_CMPL    (0xE000F00C)
+  #define SYSTICK_CMPH    (0xE000F010)
+  #define SYSTICK_GET_CNT() (*((__IO uint32_t *)SYSTICK_CNTL))
+  #define CYCLES_PER_US   (SystemCoreClock / 8000000)
+#else
+  #define SYSTICK_GET_CNT() ((uint32_t)SysTick->CNT)
+  #define CYCLES_PER_US   (SystemCoreClock / 1000000)
+#endif
 
-
-#if defined(CH32V20x) || defined(CH32V30x) || defined(CH32V30x_C) || defined(CH32V00x) || defined(CH32X035) || defined(CH32L10x) || defined(CH32VM00X)
-
+/**
+  * @brief  Function called to read the current microsecond
+  * @param  None
+  * @retval None
+  */
 uint32_t getCurrentMicros(void)
 {
   // Optimize: Avoid 64-bit/32-bit software division (which takes ~200 cycles and bloats binary).
   // Precalculate the inverse scaling factor (1<<32) / cycles_per_us once at startup,
   // then use hardware multiplication (mulhu) and shift to compute microsecond fraction in ~10 cycles.
   if (SystemCoreClock_MHz_inv == 0) {
-    SystemCoreClock_MHz_inv = (uint32_t)((1ULL << 32) / (SystemCoreClock / 1000000));
+    SystemCoreClock_MHz_inv = (uint32_t)((1ULL << 32) / CYCLES_PER_US);
   }
 
   uint32_t m0 = (uint32_t)GetTick();
-  uint32_t u0 = (uint32_t)SysTick->CNT;
+  uint32_t u0 = SYSTICK_GET_CNT();
   uint32_t m1 = (uint32_t)GetTick();
-  uint32_t u1 = (uint32_t)SysTick->CNT;   //may be a interruption
+  uint32_t u1 = SYSTICK_GET_CNT();   //may be a interruption
 
   if (m1 != m0) {
     return m1 * 1000 + (uint32_t)(((uint64_t)u1 * SystemCoreClock_MHz_inv) >> 32);
@@ -73,7 +82,7 @@ uint32_t getCurrentMicros(void)
   }
 }
 
-
+#if defined(CH32V20x) || defined(CH32V30x) || defined(CH32V30x_C) || defined(CH32V00x) || defined(CH32X035) || defined(CH32L10x) || defined(CH32VM00X)
 /*********************************************************************
  * @fn      SysTick_Handler
  *
@@ -88,44 +97,9 @@ void SysTick_Handler(void)
   osSystickHandler();
   SysTick->SR = 0;
 }
-
 #endif
 
-
-
-
-
-// for 10x serils (Qingke V3A) 
 #if defined (CH32V10x)
-
-#define SYSTICK_CNTL    (0xE000F004)   
-#define SYSTICK_CNTH    (0xE000F008)
-#define SYSTICK_CMPL    (0xE000F00C)
-#define SYSTICK_CMPH    (0xE000F010)
-
-uint32_t getCurrentMicros(void)
-{
-  // Optimize: Avoid 64-bit/32-bit software division (which takes ~200 cycles and bloats binary).
-  // Precalculate the inverse scaling factor (1<<32) / cycles_per_us once at startup,
-  // then use hardware multiplication (mulhu) and shift to compute microsecond fraction in ~10 cycles.
-  if (SystemCoreClock_MHz_inv == 0) {
-    SystemCoreClock_MHz_inv = (uint32_t)((1ULL << 32) / (SystemCoreClock / 8000000));
-  }
-
-  uint32_t m0 = (uint32_t)GetTick();
-  uint32_t u0 = *((__IO uint32_t *)SYSTICK_CNTL);
-  uint32_t m1 = (uint32_t)GetTick();
-  uint32_t u1 = *((__IO uint32_t *)SYSTICK_CNTL); //may be a interruption
-
-  if (m1 != m0) {
-    return m1 * 1000 + (uint32_t)(((uint64_t)u1 * SystemCoreClock_MHz_inv) >> 32);
-  } else {
-    return m0 * 1000 + (uint32_t)(((uint64_t)u0 * SystemCoreClock_MHz_inv) >> 32);
-  }
-}
-
-
-
 /*********************************************************************
  * @fn      SysTick_Handler
  *
@@ -143,14 +117,8 @@ void SysTick_Handler(void)
   SysTick->CTLR=0x1;
   osSystickHandler();
 }
-
 #endif
-
-
-
 
 #ifdef __cplusplus
 }
 #endif
-
-

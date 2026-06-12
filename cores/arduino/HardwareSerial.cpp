@@ -338,62 +338,62 @@ void HardwareSerial::begin(unsigned long baud, byte config)
 
 #if(OPT_USART_INT==1)
   if (_serial.uart != NULL) {
-    #if defined(USART1)
+    #if defined(USART1) && defined(USART1_IRQn)
     if (_serial.uart == USART1) {
       USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
       NVIC_SetPriority(USART1_IRQn, UART_IRQ_PRIO);
       NVIC_EnableIRQ(USART1_IRQn);
     }
     #endif
-    #if defined(USART2)
+    #if defined(USART2) && defined(USART2_IRQn)
     if (_serial.uart == USART2) {
       USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
       NVIC_SetPriority(USART2_IRQn, UART_IRQ_PRIO);
       NVIC_EnableIRQ(USART2_IRQn);
     }
     #endif
-    #if defined(USART3)
+    #if defined(USART3) && defined(USART3_IRQn)
     if (_serial.uart == USART3) {
       USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);
       NVIC_SetPriority(USART3_IRQn, UART_IRQ_PRIO);
       NVIC_EnableIRQ(USART3_IRQn);
     }
     #endif
-    #if defined(USART4)
+    #if defined(USART4) && defined(USART4_IRQn)
     if (_serial.uart == USART4) {
       USART_ITConfig(USART4, USART_IT_RXNE, ENABLE);
       NVIC_SetPriority(USART4_IRQn, UART_IRQ_PRIO);
       NVIC_EnableIRQ(USART4_IRQn);
     }
-    #elif defined(UART4)
+    #elif defined(UART4) && defined(UART4_IRQn)
     if (_serial.uart == UART4) {
       USART_ITConfig(UART4, USART_IT_RXNE, ENABLE);
       NVIC_SetPriority(UART4_IRQn, UART_IRQ_PRIO);
       NVIC_EnableIRQ(UART4_IRQn);
     }
     #endif
-    #if defined(UART5)
+    #if defined(UART5) && defined(UART5_IRQn)
     if (_serial.uart == UART5) {
       USART_ITConfig(UART5, USART_IT_RXNE, ENABLE);
       NVIC_SetPriority(UART5_IRQn, UART_IRQ_PRIO);
       NVIC_EnableIRQ(UART5_IRQn);
     }
     #endif
-    #if defined(USART6)
+    #if defined(USART6) && defined(USART6_IRQn)
     if (_serial.uart == USART6) {
       USART_ITConfig(USART6, USART_IT_RXNE, ENABLE);
       NVIC_SetPriority(USART6_IRQn, UART_IRQ_PRIO);
       NVIC_EnableIRQ(USART6_IRQn);
     }
     #endif
-    #if defined(UART7)
+    #if defined(UART7) && defined(UART7_IRQn)
     if (_serial.uart == UART7) {
       USART_ITConfig(UART7, USART_IT_RXNE, ENABLE);
       NVIC_SetPriority(UART7_IRQn, UART_IRQ_PRIO);
       NVIC_EnableIRQ(UART7_IRQn);
     }
     #endif
-    #if defined(UART8)
+    #if defined(UART8) && defined(UART8_IRQn)
     if (_serial.uart == UART8) {
       USART_ITConfig(UART8, USART_IT_RXNE, ENABLE);
       NVIC_SetPriority(UART8_IRQn, UART_IRQ_PRIO);
@@ -414,54 +414,54 @@ void HardwareSerial::end()
 
 #if(OPT_USART_INT==1)
   if (_serial.uart != NULL) {
-    #if defined(USART1)
+    #if defined(USART1) && defined(USART1_IRQn)
     if (_serial.uart == USART1) {
       NVIC_DisableIRQ(USART1_IRQn);
       USART_ITConfig(USART1, USART_IT_RXNE, DISABLE);
     }
     #endif
-    #if defined(USART2)
+    #if defined(USART2) && defined(USART2_IRQn)
     if (_serial.uart == USART2) {
       NVIC_DisableIRQ(USART2_IRQn);
       USART_ITConfig(USART2, USART_IT_RXNE, DISABLE);
     }
     #endif
-    #if defined(USART3)
+    #if defined(USART3) && defined(USART3_IRQn)
     if (_serial.uart == USART3) {
       NVIC_DisableIRQ(USART3_IRQn);
       USART_ITConfig(USART3, USART_IT_RXNE, DISABLE);
     }
     #endif
-    #if defined(USART4)
+    #if defined(USART4) && defined(USART4_IRQn)
     if (_serial.uart == USART4) {
       NVIC_DisableIRQ(USART4_IRQn);
       USART_ITConfig(USART4, USART_IT_RXNE, DISABLE);
     }
-    #elif defined(UART4)
+    #elif defined(UART4) && defined(UART4_IRQn)
     if (_serial.uart == UART4) {
       NVIC_DisableIRQ(UART4_IRQn);
       USART_ITConfig(UART4, USART_IT_RXNE, DISABLE);
     }
     #endif
-    #if defined(UART5)
+    #if defined(UART5) && defined(UART5_IRQn)
     if (_serial.uart == UART5) {
       NVIC_DisableIRQ(UART5_IRQn);
       USART_ITConfig(UART5, USART_IT_RXNE, DISABLE);
     }
     #endif
-    #if defined(USART6)
+    #if defined(USART6) && defined(USART6_IRQn)
     if (_serial.uart == USART6) {
       NVIC_DisableIRQ(USART6_IRQn);
       USART_ITConfig(USART6, USART_IT_RXNE, DISABLE);
     }
     #endif
-    #if defined(UART7)
+    #if defined(UART7) && defined(UART7_IRQn)
     if (_serial.uart == UART7) {
       NVIC_DisableIRQ(UART7_IRQn);
       USART_ITConfig(UART7, USART_IT_RXNE, DISABLE);
     }
     #endif
-    #if defined(UART8)
+    #if defined(UART8) && defined(UART8_IRQn)
     if (_serial.uart == UART8) {
       NVIC_DisableIRQ(UART8_IRQn);
       USART_ITConfig(UART8, USART_IT_RXNE, DISABLE);
