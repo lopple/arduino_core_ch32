@@ -82,10 +82,6 @@ typedef struct
 {
   TIM_TypeDef                          *Instance;         
   TIM_TimeBaseInitTypeDef               Init;     
-  /*    //Not yet considered          
-  TIM_OCInitTypeDef                     OC_Init;
-  TIM_ICInitTypeDef                     IC_Init;
-  */
 }TIM_HandleTypeDef;
 
 
