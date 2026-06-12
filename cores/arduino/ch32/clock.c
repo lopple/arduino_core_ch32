@@ -57,8 +57,6 @@ uint32_t getCurrentMicros(void)
   // Optimize: Avoid 64-bit/32-bit software division (which takes ~200 cycles and bloats binary).
   // Precalculate the inverse scaling factor (1<<32) / cycles_per_us once at startup,
   // then use hardware multiplication (mulhu) and shift to compute microsecond fraction in ~10 cycles.
-  // 【最適化】ソフト除算ルーチンのリンクを防ぎ、かつ乗算器を活用して高速化（約10サイクル）するため、
-  // 初回呼び出し時に周波数の逆数（倍率）を計算し、「乗算と右シフト」で割り算を代替しています。
   if (SystemCoreClock_MHz_inv == 0) {
     SystemCoreClock_MHz_inv = (uint32_t)((1ULL << 32) / (SystemCoreClock / 1000000));
   }
@@ -110,8 +108,6 @@ uint32_t getCurrentMicros(void)
   // Optimize: Avoid 64-bit/32-bit software division (which takes ~200 cycles and bloats binary).
   // Precalculate the inverse scaling factor (1<<32) / cycles_per_us once at startup,
   // then use hardware multiplication (mulhu) and shift to compute microsecond fraction in ~10 cycles.
-  // 【最適化】ソフト除算ルーチンのリンクを防ぎ、かつ乗算器を活用して高速化（約10サイクル）するため、
-  // 初回呼び出し時に周波数の逆数（倍率）を計算し、「乗算と右シフト」で割り算を代替しています。
   if (SystemCoreClock_MHz_inv == 0) {
     SystemCoreClock_MHz_inv = (uint32_t)((1ULL << 32) / (SystemCoreClock / 8000000));
   }
