@@ -222,15 +222,25 @@ FLASH_Status FLASH_EraseOptionBytes(void)
  */
 void FLASH_OptionBytePR(u32* pbuf)
 {
+    u32 hold[64];
     uint8_t i;
+
+    for(i=0; i<4; i++)
+    {
+        hold[i] = pbuf[i];
+    }
+    for(i=4; i<64; i++)
+    {
+        hold[i] = *(volatile u32*)(OB_BASE + 4*i);
+    }
 
     FLASH_EraseOptionBytes();
     FLASH_Unlock_Fast();
     FLASH_BufReset();
 
-    for(i=0; i<4; i++)
+    for(i=0; i<64; i++)
     {
-        FLASH_BufLoad((OB_BASE + 4*i), *pbuf++);
+        FLASH_BufLoad((OB_BASE + 4*i), hold[i]);
     }
 
     FLASH_ProgramPage_Fast(OB_BASE);
