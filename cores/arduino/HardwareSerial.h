@@ -28,7 +28,6 @@
 
 // MMOLE 240619: set OPT_USART_INT to 1 if you want to use interrupts for receiving serial data.
 #define OPT_USART_INT 1
-#define OPT_PR180 1  // PR180: HardwareSerial: use correct UART HW for TX
 
 #if 1
 

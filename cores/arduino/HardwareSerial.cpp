@@ -515,25 +515,16 @@ int HardwareSerial::read(void)
 
 size_t HardwareSerial::write(const uint8_t *buffer, size_t size)
 {
-#if OPT_PR180 // PR180: HardwareSerial: use correct UART HW for TX
     for (size_t i = 0; i < size; i++) {
       write(buffer[i]);
     }
     return size;
-#else
-    return  uart_debug_write((uint8_t *)buffer, size);
-#endif
 }
 
 
 size_t HardwareSerial::write(uint8_t c)
 {
-#if OPT_PR180 // PR180: HardwareSerial: use correct UART HW for TX
   return uart_putc(&_serial, c) == 0 ? 1 : 0;
-#else
-  uint8_t buff = c;
-  return write(&buff, 1);
-#endif
 }
 
 void HardwareSerial::setRx(uint32_t _rx)
