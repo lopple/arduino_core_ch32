@@ -259,6 +259,11 @@ extern "C" {
     }
     return len;
   }
+
+  #if defined(UART_MODULE_ENABLED) && !defined(UART_MODULE_ONLY)
+  __attribute__((used, section(".gnu.warning.printf")))
+  const char printf_warning[] = "Using standard printf() will pull in formatting code and increase binary size by 2-3KB.";
+  #endif
 }
 
 #if defined(CORE_LIGHTWEIGHT_PRINT)
