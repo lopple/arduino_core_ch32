@@ -529,7 +529,7 @@ size_t HardwareSerial::write(const uint8_t *buffer, size_t size)
 size_t HardwareSerial::write(uint8_t c)
 {
 #if OPT_PR180 // PR180: HardwareSerial: use correct UART HW for TX
-  return uart_putc(&_serial, c);
+  return uart_putc(&_serial, c) == 0 ? 1 : 0;
 #else
   uint8_t buff = c;
   return write(&buff, 1);

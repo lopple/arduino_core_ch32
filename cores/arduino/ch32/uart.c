@@ -546,7 +546,7 @@ int uart_putc(serial_t *obj, unsigned char c)
   {
     if ((GetTick() - tickstart) >= TX_TIMEOUT)
     {
-      return 0; // 0 means no error? Should be timeout error?
+      return -2; // Return error code on timeout
     }
   }
 
