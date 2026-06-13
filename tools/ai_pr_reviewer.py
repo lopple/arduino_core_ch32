@@ -40,7 +40,9 @@ def main():
     if not pr_number:
         print("PR number not found in event payload, searching for open PRs for this branch...")
         try:
-            branch_name = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"])
+            branch_name = os.environ.get("GITHUB_REF_NAME")
+            if not branch_name or branch_name == "HEAD":
+                branch_name = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"])
             owner_repo = repo.split("/")
             gh_url = f"https://api.github.com/repos/{repo}/pulls?head={owner_repo[0]}:{branch_name}&state=open"
             gh_req = urllib.request.Request(gh_url, headers=gh_headers, method="GET")
