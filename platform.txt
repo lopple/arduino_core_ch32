@@ -168,7 +168,8 @@ tools.WCH_linkE.cmd=openocd
 tools.WCH_linkE.upload.params.verbose=
 tools.WCH_linkE.upload.params.quiet=
 tools.WCH_linkE.upload.config={runtime.tools.openocd.path}/bin/wch-riscv.cfg
-tools.WCH_linkE.upload.pattern="{path}{cmd}" -f "{upload.config}" -c init -c halt -c "program {{build.path}/{build.project_name}.elf} verify; wlink_reset_resume; exit;"
+# Reset GPIOD configuration register (GPIOD_CFGLR at 0x40011400) to default floating inputs (0x44444444) on halt to disable USB pull-up (PD5) and prevent SWD verification failure caused by USB crosstalk.
+tools.WCH_linkE.upload.pattern="{path}{cmd}" -f "{upload.config}" -c init -c halt -c "mww 0x40011400 0x44444444" -c "program {{build.path}/{build.project_name}.elf} verify; wlink_reset_resume; exit;"
 
 #tools.WCH_linkE.upload.pattern="{path}{cmd}" -f {upload.config} -c init -c halt -c "program {{build.path}/{build.project_name}.elf}; verify_image {{build.path}/{build.project_name}.elf}; wlink_reset_resume;  exit;"
 
