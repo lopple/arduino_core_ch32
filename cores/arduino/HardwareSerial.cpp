@@ -29,6 +29,26 @@
 #include "HardwareSerial.h"
 
 #if defined(UART_MODULE_ENABLED) && !defined(UART_MODULE_ONLY)
+#include "PeripheralPins.h"
+
+static void getDefaultRxTxPins(void *peripheral, PinName *rx, PinName *tx)
+{
+  *rx = NC;
+  *tx = NC;
+
+#if defined(PIN_SERIAL_RX) && defined(PIN_SERIAL_TX)
+  // Check if this peripheral matches the default serial peripheral
+  void *default_peripheral = pinmap_peripheral(digitalPinToPinName(PIN_SERIAL_TX), PinMap_UART_TX);
+  if (peripheral == default_peripheral) {
+    *rx = digitalPinToPinName(PIN_SERIAL_RX);
+    *tx = digitalPinToPinName(PIN_SERIAL_TX);
+    return;
+  }
+#endif
+
+  *rx = pinmap_pin(peripheral, PinMap_UART_RX);
+  *tx = pinmap_pin(peripheral, PinMap_UART_TX);
+}
 
 
 #if defined(CORE_LIGHTWEIGHT_PRINT)
@@ -52,9 +72,10 @@ HardwareSerial::HardwareSerial(void *peripheral)
   _rx_buffer_tail = 0;
   setHandler(peripheral);
 
-  setRx(PIN_SERIAL_RX);
-  
-  setTx(PIN_SERIAL_TX);
+  PinName rx_pin, tx_pin;
+  getDefaultRxTxPins(peripheral, &rx_pin, &tx_pin);
+  setRx(rx_pin);
+  setTx(tx_pin);
   
   init(_serial.pin_rx, _serial.pin_tx);
 }
@@ -65,21 +86,10 @@ HardwareSerial::HardwareSerial(void *peripheral)
   _rx_buffer_tail = 0;
   setHandler(peripheral);
 
-#if defined(PIN_SERIAL_RX) && defined(PIN_SERIAL_TX)
-  // if SERIAL_UART_INSTANCES is defined and has value 1, then PIN_SERIAL_RX and PIN_SERIAL_TX are rx/tx pins of the selected SERIAL_UART_INSTANCE
-  setRx(PIN_SERIAL_RX);
-  setTx(PIN_SERIAL_TX);
-#endif
-
-#if defined(USART2) && defined(PIN_SERIAL_RX2) && defined(PIN_SERIAL_TX2)
-  // if SERIAL_UART_INSTANCES is defined and is 2 or higher, multiple instances can be used simultaneously
-  // TODO: get pin number from pinmap PinMap_UART_TX and PinMap_UART_RX
-  if(peripheral==USART2)
-  {
-    setRx(PIN_SERIAL_RX2);
-    setTx(PIN_SERIAL_TX2);
-  }
-#endif
+  PinName rx_pin, tx_pin;
+  getDefaultRxTxPins(peripheral, &rx_pin, &tx_pin);
+  setRx(rx_pin);
+  setTx(tx_pin);
 
   init(_serial.pin_rx, _serial.pin_tx);
 }
