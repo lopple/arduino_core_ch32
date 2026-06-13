@@ -344,14 +344,16 @@ int Print::vprintf(const char *format, va_list ap)
       case 'd':
       case 'i': {
         long val = is_long ? va_arg(ap, long) : va_arg(ap, int);
+        unsigned long uval;
         if (val < 0) {
           write('-');
           count++;
-          val = -val;
+          uval = -(unsigned long)val;
+        } else {
+          uval = val;
         }
         char buf[32];
         int idx = 0;
-        unsigned long uval = val;
         do {
           buf[idx++] = (uval % 10) + '0';
           uval /= 10;

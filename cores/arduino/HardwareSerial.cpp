@@ -125,7 +125,7 @@ void HardwareSerial::init(PinName _rx, PinName _tx, PinName _rts, PinName _cts)
       extern HardwareSerial Serial1;
       HardwareSerial *obj = &Serial1;
       unsigned char c = USART_ReceiveData(USART1);
-      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) % SERIAL_RX_BUFFER_SIZE;
+      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) & (SERIAL_RX_BUFFER_SIZE - 1);
       if (next_head != obj->_rx_buffer_tail) {
         obj->_rx_buffer[obj->_rx_buffer_head] = c;
         obj->_rx_buffer_head = next_head;
@@ -142,7 +142,7 @@ void HardwareSerial::init(PinName _rx, PinName _tx, PinName _rts, PinName _cts)
       extern HardwareSerial Serial2;
       HardwareSerial *obj = &Serial2;
       unsigned char c = USART_ReceiveData(USART2);
-      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) % SERIAL_RX_BUFFER_SIZE;
+      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) & (SERIAL_RX_BUFFER_SIZE - 1);
       if (next_head != obj->_rx_buffer_tail) {
         obj->_rx_buffer[obj->_rx_buffer_head] = c;
         obj->_rx_buffer_head = next_head;
@@ -159,7 +159,7 @@ void HardwareSerial::init(PinName _rx, PinName _tx, PinName _rts, PinName _cts)
       extern HardwareSerial Serial3;
       HardwareSerial *obj = &Serial3;
       unsigned char c = USART_ReceiveData(USART3);
-      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) % SERIAL_RX_BUFFER_SIZE;
+      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) & (SERIAL_RX_BUFFER_SIZE - 1);
       if (next_head != obj->_rx_buffer_tail) {
         obj->_rx_buffer[obj->_rx_buffer_head] = c;
         obj->_rx_buffer_head = next_head;
@@ -183,7 +183,7 @@ void HardwareSerial::init(PinName _rx, PinName _tx, PinName _rts, PinName _cts)
       extern HardwareSerial Serial4;
       HardwareSerial *obj = &Serial4;
       unsigned char c = USART_ReceiveData(UART4_DEV);
-      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) % SERIAL_RX_BUFFER_SIZE;
+      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) & (SERIAL_RX_BUFFER_SIZE - 1);
       if (next_head != obj->_rx_buffer_tail) {
         obj->_rx_buffer[obj->_rx_buffer_head] = c;
         obj->_rx_buffer_head = next_head;
@@ -200,7 +200,7 @@ void HardwareSerial::init(PinName _rx, PinName _tx, PinName _rts, PinName _cts)
       extern HardwareSerial Serial5;
       HardwareSerial *obj = &Serial5;
       unsigned char c = USART_ReceiveData(UART5);
-      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) % SERIAL_RX_BUFFER_SIZE;
+      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) & (SERIAL_RX_BUFFER_SIZE - 1);
       if (next_head != obj->_rx_buffer_tail) {
         obj->_rx_buffer[obj->_rx_buffer_head] = c;
         obj->_rx_buffer_head = next_head;
@@ -217,7 +217,7 @@ void HardwareSerial::init(PinName _rx, PinName _tx, PinName _rts, PinName _cts)
       extern HardwareSerial Serial6;
       HardwareSerial *obj = &Serial6;
       unsigned char c = USART_ReceiveData(USART6);
-      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) % SERIAL_RX_BUFFER_SIZE;
+      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) & (SERIAL_RX_BUFFER_SIZE - 1);
       if (next_head != obj->_rx_buffer_tail) {
         obj->_rx_buffer[obj->_rx_buffer_head] = c;
         obj->_rx_buffer_head = next_head;
@@ -234,7 +234,7 @@ void HardwareSerial::init(PinName _rx, PinName _tx, PinName _rts, PinName _cts)
       extern HardwareSerial Serial7;
       HardwareSerial *obj = &Serial7;
       unsigned char c = USART_ReceiveData(UART7);
-      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) % SERIAL_RX_BUFFER_SIZE;
+      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) & (SERIAL_RX_BUFFER_SIZE - 1);
       if (next_head != obj->_rx_buffer_tail) {
         obj->_rx_buffer[obj->_rx_buffer_head] = c;
         obj->_rx_buffer_head = next_head;
@@ -251,7 +251,7 @@ void HardwareSerial::init(PinName _rx, PinName _tx, PinName _rts, PinName _cts)
       extern HardwareSerial Serial8;
       HardwareSerial *obj = &Serial8;
       unsigned char c = USART_ReceiveData(UART8);
-      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) % SERIAL_RX_BUFFER_SIZE;
+      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) & (SERIAL_RX_BUFFER_SIZE - 1);
       if (next_head != obj->_rx_buffer_tail) {
         obj->_rx_buffer[obj->_rx_buffer_head] = c;
         obj->_rx_buffer_head = next_head;
@@ -485,7 +485,7 @@ int HardwareSerial::available(void)
 {
   // MMOLE: reintroduced RX buffer to properly implement read/available/peek methods
   //return -1;
-  return ((unsigned int)(SERIAL_RX_BUFFER_SIZE + _rx_buffer_head - _rx_buffer_tail)) % SERIAL_RX_BUFFER_SIZE;
+  return ((unsigned int)(SERIAL_RX_BUFFER_SIZE + _rx_buffer_head - _rx_buffer_tail)) & (SERIAL_RX_BUFFER_SIZE - 1);
 }
 
 int HardwareSerial::peek(void)
@@ -517,7 +517,7 @@ int HardwareSerial::read(void)
     return -1;
   } else {
     unsigned char c = _rx_buffer[_rx_buffer_tail];
-    _rx_buffer_tail = (rx_buffer_index_t)(_rx_buffer_tail + 1) % SERIAL_RX_BUFFER_SIZE;
+    _rx_buffer_tail = (rx_buffer_index_t)(_rx_buffer_tail + 1) & (SERIAL_RX_BUFFER_SIZE - 1);
     return c;
   }
 }

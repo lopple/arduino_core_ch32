@@ -52,6 +52,9 @@
 #if !defined(SERIAL_RX_BUFFER_SIZE)
   #define SERIAL_RX_BUFFER_SIZE 64
 #endif
+
+static_assert((SERIAL_RX_BUFFER_SIZE & (SERIAL_RX_BUFFER_SIZE - 1)) == 0, "SERIAL_RX_BUFFER_SIZE must be a power of 2!");
+static_assert((SERIAL_TX_BUFFER_SIZE & (SERIAL_TX_BUFFER_SIZE - 1)) == 0, "SERIAL_TX_BUFFER_SIZE must be a power of 2!");
 #if (SERIAL_TX_BUFFER_SIZE>256)
   typedef uint16_t tx_buffer_index_t;
 #else
