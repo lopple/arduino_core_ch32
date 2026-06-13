@@ -225,7 +225,7 @@ void _gpio_exti_callback(uint16_t GPIO_Pin)
 extern "C" {
 #endif
 
-void EXTI7_0_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+void EXTI7_0_IRQHandler(void) __attribute__((weak, interrupt("WCH-Interrupt-fast")));
 void EXTI7_0_IRQHandler(void)
 {
    uint32_t pin;

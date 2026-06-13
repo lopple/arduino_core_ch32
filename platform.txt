@@ -81,6 +81,7 @@ compiler.elf2lst.extra_flags=
 # ---------
 #build.usb_flags=-DUSBCON {build.usb_speed} -DUSBD_VID={build.vid} -DUSBD_PID={build.pid} -DHAL_PCD_MODULE_ENABLED
 build.usb_flags=
+build.usb_ldflags=
 
 # Specify defaults for vid/pid, since an empty value is impossible to
 # detect in the preprocessor, but a 0 can be checked for.
@@ -132,7 +133,7 @@ recipe.S.o.pattern="{compiler.path}{compiler.S.cmd}" {compiler.S.flags} {build.i
 recipe.ar.pattern="{compiler.path}{compiler.ar.cmd}" {compiler.ar.flags} {compiler.ar.extra_flags} "{archive_file_path}" "{object_file}"
 
 ## Combine gc-sections, archives, and objects
-recipe.c.combine.pattern="{compiler.path}{compiler.c.elf.cmd}" {compiler.extra_flags} -T "{build.system.path}/{build.series}/SRC/Ld/{build.ldscript}" -nostartfiles -Xlinker --gc-sections "-Wl,-Map,{build.path}/{build.project_name}.map" {compiler.c.elf.extra_flags} {build.flags.ldflags} -o "{build.path}/{build.project_name}.elf" "-L{build.path}" -Wl,--start-group {object_files} {build.ch_extra_lib} -Wl,--whole-archive "{archive_file_path}" -Wl,--no-whole-archive -lc -Wl,--end-group 
+recipe.c.combine.pattern="{compiler.path}{compiler.c.elf.cmd}" {compiler.extra_flags} -T "{build.system.path}/{build.series}/SRC/Ld/{build.ldscript}" -nostartfiles -Xlinker --gc-sections "-Wl,-Map,{build.path}/{build.project_name}.map" {compiler.c.elf.extra_flags} {build.flags.ldflags} {build.usb_ldflags} -o "{build.path}/{build.project_name}.elf" "-L{build.path}" -Wl,--start-group {object_files} {build.ch_extra_lib} -Wl,--whole-archive "{archive_file_path}" -Wl,--no-whole-archive -lc -Wl,--end-group 
 
 ## Create output (.bin file)
 recipe.objcopy.bin.pattern="{compiler.path}{compiler.objcopy.cmd}" {compiler.elf2bin.flags} {compiler.elf2bin.extra_flags} "{build.path}/{build.project_name}.elf" "{build.path}/{build.project_name}.bin"
