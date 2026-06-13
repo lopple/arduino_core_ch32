@@ -221,11 +221,9 @@ void i2c_custom_init(i2c_t *obj, uint32_t timing, uint32_t addressingMode, uint3
   */
 void i2c_deinit(i2c_t *obj)
 {
-  // MMOLE TODO: Disable I2C interrupts
-  // do reverse of this: obj->i2c->CTLR2 |= I2C_CTLR2_ITBUFEN | I2C_CTLR2_ITEVTEN | I2C_CTLR2_ITERREN;
   NVIC_DisableIRQ(obj->irq);
   NVIC_DisableIRQ(obj->irqER);
-  I2C_DeInit(obj->i2c);
+  I2C_DeInit(obj->i2c); // Resets I2C registers (including CTLR2 interrupt enable bits)
 }
 
 /**
