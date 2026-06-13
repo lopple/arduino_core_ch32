@@ -44,6 +44,15 @@ void delay(uint32_t ms)
   }
 }
 
+#if defined(CH32V003_RV003USB)
+extern void usb_poll(void);
+void yield(void)
+{
+  usb_poll();
+}
+#endif
+
 #ifdef __cplusplus
 }
 #endif
+

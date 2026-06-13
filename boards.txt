@@ -119,7 +119,11 @@ CH32V00x_EVT.menu.rtlib.nanofps.build.flags.ldflags=--specs=nano.specs --specs=n
 CH32V00x_EVT.menu.rtlib.full=Newlib Standard
 CH32V00x_EVT.menu.rtlib.full.build.flags.ldflags=--specs=nosys.specs
 
-
+# USB support (if available)
+CH32V00x_EVT.menu.usb.none=None
+CH32V00x_EVT.menu.usb.none.build.usb_flags=
+CH32V00x_EVT.menu.usb.rv003usb=USB HID (rv003usb)
+CH32V00x_EVT.menu.usb.rv003usb.build.usb_flags=-DUSBCON -DUSB_SUPPORT_HID -DCH32V003_RV003USB
 
 
 ##############################################################################
