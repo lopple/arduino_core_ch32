@@ -47,6 +47,9 @@
   #include "WMath.h"
   #include "WSerial.h"
   #include "WString.h"
+  #if defined(CH32V003_RV003USB)
+    #include "ch32/usb/USBHID.h"
+  #endif
 #endif // __cplusplus
 
 

@@ -14,7 +14,9 @@
 
 /* ENABLE Peripherals */
 #define                         ADC_MODULE_ENABLED
+#if !defined(CH32V003_RV003USB)
 #define                         UART_MODULE_ENABLED
+#endif
 #define                         SPI_MODULE_ENABLED
 #define                         I2C_MODULE_ENABLED
 #define                         TIM_MODULE_ENABLED
