@@ -26,7 +26,13 @@ uint32_t SystemCoreClock_MHz_inv = 0;
 
 WEAK uint64_t GetTick(void)
 {
-  return msTick;
+  uint32_t high1, high2, low;
+  do {
+    high1 = (uint32_t)(msTick >> 32);
+    low   = (uint32_t)msTick;
+    high2 = (uint32_t)(msTick >> 32);
+  } while (high1 != high2);
+  return ((uint64_t)high1 << 32) | low;
 }
 
 void osSystickHandler() __attribute__((weak, alias("noOsSystickHandler")));
