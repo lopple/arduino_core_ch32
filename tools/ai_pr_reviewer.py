@@ -30,12 +30,45 @@ def main():
     with open(event_path, "r", encoding="utf-8") as f:
         event = json.load(f)
 
+    gh_headers = {
+        "Authorization": f"Bearer {github_token}",
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "GitHub-Actions-AI-PR-Reviewer"
+    }
+
     pr_number = event.get("number")
     if not pr_number:
-        print("Not a Pull Request, skipping.")
-        return
+        print("PR number not found in event payload, searching for open PRs for this branch...")
+        try:
+            branch_name = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"])
+            owner_repo = repo.split("/")
+            gh_url = f"https://api.github.com/repos/{repo}/pulls?head={owner_repo[0]}:{branch_name}&state=open"
+            gh_req = urllib.request.Request(gh_url, headers=gh_headers, method="GET")
+            with urllib.request.urlopen(gh_req) as res:
+                pulls = json.loads(res.read().decode("utf-8"))
+                if pulls:
+                    pr_number = pulls[0]["number"]
+                    print(f"Found active PR #{pr_number} for branch {branch_name}")
+                else:
+                    print(f"No open PR found for branch {branch_name}, skipping review.")
+                    return
+        except Exception as e:
+            print(f"Failed to query GitHub PRs: {e}")
+            return
 
-    base_ref = event["pull_request"]["base"]["ref"]
+    if "pull_request" in event:
+        base_ref = event["pull_request"]["base"]["ref"]
+    else:
+        print(f"Fetching PR #{pr_number} details to get base ref...")
+        try:
+            pr_url = f"https://api.github.com/repos/{repo}/pulls/{pr_number}"
+            pr_req = urllib.request.Request(pr_url, headers=gh_headers, method="GET")
+            with urllib.request.urlopen(pr_req) as res:
+                pr_data = json.loads(res.read().decode("utf-8"))
+                base_ref = pr_data["base"]["ref"]
+        except Exception as e:
+            print(f"Failed to fetch PR base ref: {e}")
+            return
     
     # Fetch base branch to generate diff
     print(f"Fetching base branch origin/{base_ref}...")

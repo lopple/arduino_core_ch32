@@ -3,6 +3,9 @@ name: AI PR Reviewer
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - rc/v2
 
 permissions:
   contents: read
