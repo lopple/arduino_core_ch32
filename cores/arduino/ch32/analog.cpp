@@ -767,38 +767,54 @@ void pwm_start(PinName pin, uint32_t PWM_freq, uint32_t value, TimerCompareForma
   // Configure GPIO pin for TIM Alternate Function
   pinmap_pinout(pin, PinMap_TIM);
 
-  // Enable TIM clock
+  // Enable TIM clock (only if not already enabled, to avoid RMW register writes at runtime)
   if (Instance == TIM1) {
 #if defined(CH32L10x) || defined(CH32VM00X)
-    RCC_PB2PeriphClockCmd(RCC_PB2Periph_TIM1, ENABLE);
+    if ((RCC->PB2PCENR & RCC_PB2Periph_TIM1) == 0) {
+      RCC_PB2PeriphClockCmd(RCC_PB2Periph_TIM1, ENABLE);
+    }
 #else
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
+    if ((RCC->APB2PCENR & RCC_APB2Periph_TIM1) == 0) {
+      RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
+    }
 #endif
   }
 #if defined(TIM2_BASE)
   else if (Instance == TIM2) {
 #if defined(CH32L10x) || defined(CH32VM00X)
-    RCC_PB1PeriphClockCmd(RCC_PB1Periph_TIM2, ENABLE);
+    if ((RCC->PB1PCENR & RCC_PB1Periph_TIM2) == 0) {
+      RCC_PB1PeriphClockCmd(RCC_PB1Periph_TIM2, ENABLE);
+    }
 #else
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+    if ((RCC->APB1PCENR & RCC_APB1Periph_TIM2) == 0) {
+      RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+    }
 #endif
   }
 #endif
 #if defined(TIM3_BASE)
   else if (Instance == TIM3) {
 #if defined(CH32L10x) || defined(CH32VM00X)
-    RCC_PB1PeriphClockCmd(RCC_PB1Periph_TIM3, ENABLE);
+    if ((RCC->PB1PCENR & RCC_PB1Periph_TIM3) == 0) {
+      RCC_PB1PeriphClockCmd(RCC_PB1Periph_TIM3, ENABLE);
+    }
 #else
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+    if ((RCC->APB1PCENR & RCC_APB1Periph_TIM3) == 0) {
+      RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+    }
 #endif
   }
 #endif
 #if defined(TIM4_BASE)
   else if (Instance == TIM4) {
 #if defined(CH32L10x)
-    RCC_PB1PeriphClockCmd(RCC_PB1Periph_TIM4, ENABLE);
+    if ((RCC->PB1PCENR & RCC_PB1Periph_TIM4) == 0) {
+      RCC_PB1PeriphClockCmd(RCC_PB1Periph_TIM4, ENABLE);
+    }
 #else
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+    if ((RCC->APB1PCENR & RCC_APB1Periph_TIM4) == 0) {
+      RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+    }
 #endif
   }
 #endif
