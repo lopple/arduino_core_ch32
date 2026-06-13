@@ -384,7 +384,7 @@ uint32_t get_adc_channel(PinName pin)
   * @brief  Return ADC HAL internal channel linked to a PinName
   * @param  pin: specific PinName's for ADC internal. Value can be:
   *         PADC_TEMP, PADC_TEMP_ADC5, PADC_VREF, PADC_VBAT
-  *         Note that not all of these values ​​may be available for all series.
+  *         Note that not all of these values may be available for all series.
   * @retval Valid HAL internal channel.
   */
 uint32_t get_adc_internal_channel(PinName pin)
@@ -758,26 +758,194 @@ uint16_t adc_read_value(PinName pin, uint32_t resolution)
 void pwm_start(PinName pin, uint32_t PWM_freq, uint32_t value, TimerCompareFormat_t resolution)
 {
   TIM_TypeDef *Instance = (TIM_TypeDef *)pinmap_peripheral(pin, PinMap_TIM);
-  HardwareTimer *HT;
-  TimerModes_t previousMode;
-  uint32_t index = get_timer_index(Instance);
-  if (HardwareTimer_Handle[index] == NULL) {
-    HardwareTimer_Handle[index]->__this = new HardwareTimer((TIM_TypeDef *)pinmap_peripheral(pin, PinMap_TIM));
+  if (Instance == NP) {
+    return;
   }
-
-  HT = (HardwareTimer *)(HardwareTimer_Handle[index]->__this);
-
+  
   uint32_t channel = CH_PIN_CHANNEL(pinmap_function(pin, PinMap_TIM));
 
-  previousMode = HT->getMode(channel);
-  if (previousMode != TIMER_OUTPUT_COMPARE_PWM1) {
-    HT->setMode(channel, TIMER_OUTPUT_COMPARE_PWM1, pin);
+  // Configure GPIO pin for TIM Alternate Function
+  pinmap_pinout(pin, PinMap_TIM);
+
+  // Enable TIM clock (only if not already enabled, to avoid RMW register writes at runtime)
+  if (Instance == TIM1) {
+#if defined(CH32L10x) || defined(CH32VM00X)
+    if ((RCC->PB2PCENR & RCC_PB2Periph_TIM1) == 0) {
+      RCC_PB2PeriphClockCmd(RCC_PB2Periph_TIM1, ENABLE);
+    }
+#else
+    if ((RCC->APB2PCENR & RCC_APB2Periph_TIM1) == 0) {
+      RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
+    }
+#endif
   }
-  HT->setOverflow(PWM_freq, HERTZ_FORMAT);
-  HT->setCaptureCompare(channel, value, resolution);
-  if (previousMode != TIMER_OUTPUT_COMPARE_PWM1) {
-    HT->resume();
+#if defined(TIM2_BASE)
+  else if (Instance == TIM2) {
+#if defined(CH32L10x) || defined(CH32VM00X)
+    if ((RCC->PB1PCENR & RCC_PB1Periph_TIM2) == 0) {
+      RCC_PB1PeriphClockCmd(RCC_PB1Periph_TIM2, ENABLE);
+    }
+#else
+    if ((RCC->APB1PCENR & RCC_APB1Periph_TIM2) == 0) {
+      RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+    }
+#endif
   }
+#endif
+#if defined(TIM3_BASE)
+  else if (Instance == TIM3) {
+#if defined(CH32L10x) || defined(CH32VM00X)
+    if ((RCC->PB1PCENR & RCC_PB1Periph_TIM3) == 0) {
+      RCC_PB1PeriphClockCmd(RCC_PB1Periph_TIM3, ENABLE);
+    }
+#else
+    if ((RCC->APB1PCENR & RCC_APB1Periph_TIM3) == 0) {
+      RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+    }
+#endif
+  }
+#endif
+#if defined(TIM4_BASE)
+  else if (Instance == TIM4) {
+#if defined(CH32L10x)
+    if ((RCC->PB1PCENR & RCC_PB1Periph_TIM4) == 0) {
+      RCC_PB1PeriphClockCmd(RCC_PB1Periph_TIM4, ENABLE);
+    }
+#else
+    if ((RCC->APB1PCENR & RCC_APB1Periph_TIM4) == 0) {
+      RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+    }
+#endif
+  }
+#endif
+
+  // Get Timer Clock Frequency
+  uint32_t timerClk = SystemCoreClock;
+#if !defined(CH32V00x) && !defined(CH32X035) && !defined(CH32VM00X)
+  RCC_ClocksTypeDef RCC_ClocksStatus;
+  RCC_GetClocksFreq(&RCC_ClocksStatus);
+  uint32_t uwAPBxPrescaler = 1;
+  uint32_t uwTimclock = RCC_ClocksStatus.HCLK_Frequency;
+  uint8_t clkSrc = 0;
+  
+#if defined(TIM2_BASE)
+  if (Instance == TIM2) clkSrc = 1;
+#endif
+#if defined(TIM3_BASE)
+  if (Instance == TIM3) clkSrc = 1;
+#endif
+#if defined(TIM4_BASE)
+  if (Instance == TIM4) clkSrc = 1;
+#endif
+#if defined(TIM5_BASE)
+  if (Instance == TIM5) clkSrc = 1;
+#endif
+#if defined(TIM6_BASE)
+  if (Instance == TIM6) clkSrc = 1;
+#endif
+#if defined(TIM7_BASE)
+  if (Instance == TIM7) clkSrc = 1;
+#endif
+#if defined(TIM1_BASE)
+  if (Instance == TIM1) clkSrc = 2;
+#endif
+#if defined(TIM8_BASE)
+  if (Instance == TIM8) clkSrc = 2;
+#endif
+#if defined(TIM9_BASE)
+  if (Instance == TIM9) clkSrc = 2;
+#endif
+#if defined(TIM10_BASE)
+  if (Instance == TIM10) clkSrc = 2;
+#endif
+
+  if (clkSrc == 1) {
+    uwAPBxPrescaler = (RCC->CFGR0 & RCC_PPRE1) >> 8;
+    uwTimclock = RCC_ClocksStatus.PCLK1_Frequency;
+  } else if (clkSrc == 2) {
+    uwAPBxPrescaler = (RCC->CFGR0 & RCC_PPRE2) >> 11;
+    uwTimclock = RCC_ClocksStatus.PCLK2_Frequency;
+  }
+  
+  switch(uwAPBxPrescaler & 0x7) {
+    case 0x4: uwAPBxPrescaler = 2; break;
+    case 0x5: uwAPBxPrescaler = 4; break;
+    case 0x6: uwAPBxPrescaler = 8; break;
+    case 0x7: uwAPBxPrescaler = 16; break;
+    default: uwAPBxPrescaler = 1; break;
+  }
+  if (uwAPBxPrescaler == 1) {
+    timerClk = uwTimclock;
+  } else {
+    timerClk = uwTimclock * 2;
+  }
+#endif
+
+  // Calculate PSC and ATRLR (Period)
+  uint32_t period_cyc = timerClk / PWM_freq;
+  uint32_t prescaler = (period_cyc / 0x10000) + 1;
+  uint32_t period_ticks = period_cyc / prescaler;
+  uint32_t arr_val = (period_ticks > 0) ? (period_ticks - 1) : 0;
+  
+  Instance->PSC = prescaler - 1;
+  Instance->ATRLR = arr_val;
+
+  // Calculate CCR (Pulse) depending on resolution
+  uint32_t ccr_val = 0;
+  if (resolution >= RESOLUTION_1B_COMPARE_FORMAT && resolution <= RESOLUTION_16B_COMPARE_FORMAT) {
+    ccr_val = ((arr_val + 1) * value) / ((1 << resolution) - 1);
+  } else if (resolution == PERCENT_COMPARE_FORMAT) {
+    ccr_val = ((arr_val + 1) * value) / 100;
+  } else {
+    ccr_val = value;
+  }
+
+  // Setup Output Compare for PWM1 Mode
+  TIM_OCInitTypeDef TIM_OCInitStructure = {0};
+  TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+  TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+  TIM_OCInitStructure.TIM_Pulse = ccr_val;
+  TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+
+#if defined(TIM_OIS1)
+  TIM_OCInitStructure.TIM_OCIdleState = TIM_OSSIState_Disable;
+#endif
+#if defined(TIM_CC1NE)
+  TIM_OCInitStructure.TIM_OCNPolarity = TIM_OCNPolarity_High;
+#if defined(TIM_OIS1N)
+  TIM_OCInitStructure.TIM_OCNIdleState = TIM_OCNIdleState_Reset;
+#endif
+#endif
+
+  switch (channel) {
+    case 1:
+      TIM_OC1Init(Instance, &TIM_OCInitStructure);
+      TIM_OC1PreloadConfig(Instance, TIM_OCPreload_Enable);
+      break;
+    case 2:
+      TIM_OC2Init(Instance, &TIM_OCInitStructure);
+      TIM_OC2PreloadConfig(Instance, TIM_OCPreload_Enable);
+      break;
+    case 3:
+      TIM_OC3Init(Instance, &TIM_OCInitStructure);
+      TIM_OC3PreloadConfig(Instance, TIM_OCPreload_Enable);
+      break;
+    case 4:
+      TIM_OC4Init(Instance, &TIM_OCInitStructure);
+      TIM_OC4PreloadConfig(Instance, TIM_OCPreload_Enable);
+      break;
+  }
+
+  TIM_ARRPreloadConfig(Instance, ENABLE);
+
+#if defined(TIM1_BASE)
+  if (Instance == TIM1) {
+    TIM_CtrlPWMOutputs(Instance, ENABLE);
+  }
+#endif
+
+  // Enable Timer
+  TIM_Cmd(Instance, ENABLE);
 }
 /**
   * @brief  This function will disable the PWM
@@ -788,16 +956,43 @@ void pwm_start(PinName pin, uint32_t PWM_freq, uint32_t value, TimerCompareForma
 void pwm_stop(PinName pin)
 {
   TIM_TypeDef *Instance = (TIM_TypeDef *)pinmap_peripheral(pin, PinMap_TIM);
-  HardwareTimer *HT;
-  uint32_t index = get_timer_index(Instance);
-  if (HardwareTimer_Handle[index] == NULL) {
-    HardwareTimer_Handle[index]->__this = new HardwareTimer((TIM_TypeDef *)pinmap_peripheral(pin, PinMap_TIM));
-  }
-
-  HT = (HardwareTimer *)(HardwareTimer_Handle[index]->__this);
-  if (HT != NULL) {
-    delete (HT);
-    HT = NULL;
+  if (Instance != NP) {
+    TIM_Cmd(Instance, DISABLE);
+    
+    if (Instance == TIM1) {
+#if defined(CH32L10x) || defined(CH32VM00X)
+      RCC_PB2PeriphClockCmd(RCC_PB2Periph_TIM1, DISABLE);
+#else
+      RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, DISABLE);
+#endif
+    }
+#if defined(TIM2_BASE)
+    else if (Instance == TIM2) {
+#if defined(CH32L10x) || defined(CH32VM00X)
+      RCC_PB1PeriphClockCmd(RCC_PB1Periph_TIM2, DISABLE);
+#else
+      RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, DISABLE);
+#endif
+    }
+#endif
+#if defined(TIM3_BASE)
+    else if (Instance == TIM3) {
+#if defined(CH32L10x) || defined(CH32VM00X)
+      RCC_PB1PeriphClockCmd(RCC_PB1Periph_TIM3, DISABLE);
+#else
+      RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, DISABLE);
+#endif
+    }
+#endif
+#if defined(TIM4_BASE)
+    else if (Instance == TIM4) {
+#if defined(CH32L10x)
+      RCC_PB1PeriphClockCmd(RCC_PB1Periph_TIM4, DISABLE);
+#else
+      RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, DISABLE);
+#endif
+    }
+#endif
   }
 }
 #endif /* TIM_MODULE_ENABLED && !TIM_MODULE_ONLY */
