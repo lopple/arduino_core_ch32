@@ -27,6 +27,19 @@ def main():
         print("Error: GITHUB_EVENT_PATH is not set.")
         return
 
+    # Temporarily query and list available models for debugging
+    print("Listing available models for debugging...")
+    try:
+        models_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={gemini_key}"
+        models_req = urllib.request.Request(models_url, method="GET")
+        with urllib.request.urlopen(models_req) as res:
+            models_data = json.loads(res.read().decode("utf-8"))
+            print("Available models:")
+            for m in models_data.get("models", []):
+                print(f" - {m.get('name')}: {m.get('supportedGenerationMethods')}")
+    except Exception as e:
+        print(f"Failed to list models: {e}")
+
     # Load event payload
     with open(event_path, "r", encoding="utf-8") as f:
         event = json.load(f)
