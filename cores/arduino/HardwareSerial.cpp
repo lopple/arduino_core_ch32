@@ -21,6 +21,7 @@
   Modified 14 August 2012 by Alarus
   Modified 3  December 2013 by Matthijs Kooijman
   Modified 1 may 2023 by TempersLee
+  Modified 13 October 2023 by Maxint R&D, latest update 6 May 2025
 */
 
 #include <stdio.h>
@@ -28,18 +29,71 @@
 #include "HardwareSerial.h"
 
 #if defined(UART_MODULE_ENABLED) && !defined(UART_MODULE_ONLY)
+#include "PeripheralPins.h"
 
+static void getDefaultRxTxPins(void *peripheral, PinName *rx, PinName *tx)
+{
+  *rx = NC;
+  *tx = NC;
+
+#if defined(PIN_SERIAL_RX) && defined(PIN_SERIAL_TX)
+  // Check if this peripheral matches the default serial peripheral
+  void *default_peripheral = pinmap_peripheral(digitalPinToPinName(PIN_SERIAL_TX), PinMap_UART_TX);
+  if (peripheral == default_peripheral) {
+    *rx = digitalPinToPinName(PIN_SERIAL_RX);
+    *tx = digitalPinToPinName(PIN_SERIAL_TX);
+    return;
+  }
+#endif
+
+  *rx = pinmap_pin(peripheral, PinMap_UART_RX);
+  *tx = pinmap_pin(peripheral, PinMap_UART_TX);
+}
+
+
+#if defined(CORE_LIGHTWEIGHT_PRINT)
+size_t HardwareSerial::serial_write_wrapper(void* ctx, uint8_t c) {
+  return ((HardwareSerial*)ctx)->write(c);
+}
+int HardwareSerial::serial_available_wrapper(void* ctx) {
+  return ((HardwareSerial*)ctx)->available();
+}
+int HardwareSerial::serial_read_wrapper(void* ctx) {
+  return ((HardwareSerial*)ctx)->read();
+}
+int HardwareSerial::serial_peek_wrapper(void* ctx) {
+  return ((HardwareSerial*)ctx)->peek();
+}
 
 HardwareSerial::HardwareSerial(void *peripheral)
+  : Stream(serial_write_wrapper, this, serial_available_wrapper, serial_read_wrapper, serial_peek_wrapper)
 {
+  _rx_buffer_head = 0;
+  _rx_buffer_tail = 0;
   setHandler(peripheral);
 
-  setRx(PIN_SERIAL_RX);
-  
-  setTx(PIN_SERIAL_TX);
+  PinName rx_pin, tx_pin;
+  getDefaultRxTxPins(peripheral, &rx_pin, &tx_pin);
+  setRx(rx_pin);
+  setTx(tx_pin);
   
   init(_serial.pin_rx, _serial.pin_tx);
 }
+#else
+HardwareSerial::HardwareSerial(void *peripheral)
+{
+  _rx_buffer_head = 0;
+  _rx_buffer_tail = 0;
+  setHandler(peripheral);
+
+  PinName rx_pin, tx_pin;
+  getDefaultRxTxPins(peripheral, &rx_pin, &tx_pin);
+  setRx(rx_pin);
+  setTx(tx_pin);
+
+  init(_serial.pin_rx, _serial.pin_tx);
+}
+#endif
 
 
 
@@ -57,6 +111,159 @@ void HardwareSerial::init(PinName _rx, PinName _tx, PinName _rts, PinName _cts)
 }
 
 
+// Interrupt handler for filling rx buffer /////////////////////////////////////
+#if(OPT_USART_INT==1)
+  #ifdef __cplusplus
+  extern "C" {
+  #endif
+
+#if defined(USART1) && defined(HAVE_HWSERIAL1)
+  void USART1_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+  void USART1_IRQHandler(void) {
+    if (USART_GetITStatus(USART1, USART_IT_RXNE) != RESET) {
+      USART_ClearITPendingBit(USART1, USART_IT_RXNE);
+      extern HardwareSerial Serial1;
+      HardwareSerial *obj = &Serial1;
+      unsigned char c = USART_ReceiveData(USART1);
+      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) & (SERIAL_RX_BUFFER_SIZE - 1);
+      if (next_head != obj->_rx_buffer_tail) {
+        obj->_rx_buffer[obj->_rx_buffer_head] = c;
+        obj->_rx_buffer_head = next_head;
+      }
+    }
+  }
+#endif
+
+#if defined(USART2) && defined(HAVE_HWSERIAL2)
+  void USART2_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+  void USART2_IRQHandler(void) {
+    if (USART_GetITStatus(USART2, USART_IT_RXNE) != RESET) {
+      USART_ClearITPendingBit(USART2, USART_IT_RXNE);
+      extern HardwareSerial Serial2;
+      HardwareSerial *obj = &Serial2;
+      unsigned char c = USART_ReceiveData(USART2);
+      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) & (SERIAL_RX_BUFFER_SIZE - 1);
+      if (next_head != obj->_rx_buffer_tail) {
+        obj->_rx_buffer[obj->_rx_buffer_head] = c;
+        obj->_rx_buffer_head = next_head;
+      }
+    }
+  }
+#endif
+
+#if defined(USART3) && defined(HAVE_HWSERIAL3)
+  void USART3_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+  void USART3_IRQHandler(void) {
+    if (USART_GetITStatus(USART3, USART_IT_RXNE) != RESET) {
+      USART_ClearITPendingBit(USART3, USART_IT_RXNE);
+      extern HardwareSerial Serial3;
+      HardwareSerial *obj = &Serial3;
+      unsigned char c = USART_ReceiveData(USART3);
+      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) & (SERIAL_RX_BUFFER_SIZE - 1);
+      if (next_head != obj->_rx_buffer_tail) {
+        obj->_rx_buffer[obj->_rx_buffer_head] = c;
+        obj->_rx_buffer_head = next_head;
+      }
+    }
+  }
+#endif
+
+#if (defined(USART4) || defined(UART4)) && defined(HAVE_HWSERIAL4)
+  #if defined(USART4)
+    #define UART4_DEV USART4
+    #define UART4_IRQ_HANDLER USART4_IRQHandler
+  #else
+    #define UART4_DEV UART4
+    #define UART4_IRQ_HANDLER UART4_IRQHandler
+  #endif
+  void UART4_IRQ_HANDLER(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+  void UART4_IRQ_HANDLER(void) {
+    if (USART_GetITStatus(UART4_DEV, USART_IT_RXNE) != RESET) {
+      USART_ClearITPendingBit(UART4_DEV, USART_IT_RXNE);
+      extern HardwareSerial Serial4;
+      HardwareSerial *obj = &Serial4;
+      unsigned char c = USART_ReceiveData(UART4_DEV);
+      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) & (SERIAL_RX_BUFFER_SIZE - 1);
+      if (next_head != obj->_rx_buffer_tail) {
+        obj->_rx_buffer[obj->_rx_buffer_head] = c;
+        obj->_rx_buffer_head = next_head;
+      }
+    }
+  }
+#endif
+
+#if defined(UART5) && defined(HAVE_HWSERIAL5)
+  void UART5_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+  void UART5_IRQHandler(void) {
+    if (USART_GetITStatus(UART5, USART_IT_RXNE) != RESET) {
+      USART_ClearITPendingBit(UART5, USART_IT_RXNE);
+      extern HardwareSerial Serial5;
+      HardwareSerial *obj = &Serial5;
+      unsigned char c = USART_ReceiveData(UART5);
+      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) & (SERIAL_RX_BUFFER_SIZE - 1);
+      if (next_head != obj->_rx_buffer_tail) {
+        obj->_rx_buffer[obj->_rx_buffer_head] = c;
+        obj->_rx_buffer_head = next_head;
+      }
+    }
+  }
+#endif
+
+#if defined(USART6) && defined(HAVE_HWSERIAL6)
+  void USART6_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+  void USART6_IRQHandler(void) {
+    if (USART_GetITStatus(USART6, USART_IT_RXNE) != RESET) {
+      USART_ClearITPendingBit(USART6, USART_IT_RXNE);
+      extern HardwareSerial Serial6;
+      HardwareSerial *obj = &Serial6;
+      unsigned char c = USART_ReceiveData(USART6);
+      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) & (SERIAL_RX_BUFFER_SIZE - 1);
+      if (next_head != obj->_rx_buffer_tail) {
+        obj->_rx_buffer[obj->_rx_buffer_head] = c;
+        obj->_rx_buffer_head = next_head;
+      }
+    }
+  }
+#endif
+
+#if defined(UART7) && defined(HAVE_HWSERIAL7)
+  void UART7_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+  void UART7_IRQHandler(void) {
+    if (USART_GetITStatus(UART7, USART_IT_RXNE) != RESET) {
+      USART_ClearITPendingBit(UART7, USART_IT_RXNE);
+      extern HardwareSerial Serial7;
+      HardwareSerial *obj = &Serial7;
+      unsigned char c = USART_ReceiveData(UART7);
+      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) & (SERIAL_RX_BUFFER_SIZE - 1);
+      if (next_head != obj->_rx_buffer_tail) {
+        obj->_rx_buffer[obj->_rx_buffer_head] = c;
+        obj->_rx_buffer_head = next_head;
+      }
+    }
+  }
+#endif
+
+#if defined(UART8) && defined(HAVE_HWSERIAL8)
+  void UART8_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+  void UART8_IRQHandler(void) {
+    if (USART_GetITStatus(UART8, USART_IT_RXNE) != RESET) {
+      USART_ClearITPendingBit(UART8, USART_IT_RXNE);
+      extern HardwareSerial Serial8;
+      HardwareSerial *obj = &Serial8;
+      unsigned char c = USART_ReceiveData(UART8);
+      rx_buffer_index_t next_head = (obj->_rx_buffer_head + 1) & (SERIAL_RX_BUFFER_SIZE - 1);
+      if (next_head != obj->_rx_buffer_tail) {
+        obj->_rx_buffer[obj->_rx_buffer_head] = c;
+        obj->_rx_buffer_head = next_head;
+      }
+    }
+  }
+#endif
+
+  #ifdef __cplusplus
+  }
+  #endif
+#endif //if(OPT_USART_INT==1)
 
 // Public Methods //////////////////////////////////////////////////////////////
 void HardwareSerial::begin(unsigned long baud, byte config)
@@ -138,46 +345,196 @@ void HardwareSerial::begin(unsigned long baud, byte config)
       break;
   }
   uart_init(&_serial, (uint32_t)baud, databits, parity, stopbits);
+
+#if(OPT_USART_INT==1)
+  if (_serial.uart != NULL) {
+    #if defined(USART1) && defined(USART1_IRQn)
+    if (_serial.uart == USART1) {
+      USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
+      NVIC_SetPriority(USART1_IRQn, UART_IRQ_PRIO);
+      NVIC_EnableIRQ(USART1_IRQn);
+    }
+    #endif
+    #if defined(USART2) && defined(USART2_IRQn)
+    if (_serial.uart == USART2) {
+      USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
+      NVIC_SetPriority(USART2_IRQn, UART_IRQ_PRIO);
+      NVIC_EnableIRQ(USART2_IRQn);
+    }
+    #endif
+    #if defined(USART3) && defined(USART3_IRQn)
+    if (_serial.uart == USART3) {
+      USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);
+      NVIC_SetPriority(USART3_IRQn, UART_IRQ_PRIO);
+      NVIC_EnableIRQ(USART3_IRQn);
+    }
+    #endif
+    #if defined(USART4) && defined(USART4_IRQn)
+    if (_serial.uart == USART4) {
+      USART_ITConfig(USART4, USART_IT_RXNE, ENABLE);
+      NVIC_SetPriority(USART4_IRQn, UART_IRQ_PRIO);
+      NVIC_EnableIRQ(USART4_IRQn);
+    }
+    #elif defined(UART4) && defined(UART4_IRQn)
+    if (_serial.uart == UART4) {
+      USART_ITConfig(UART4, USART_IT_RXNE, ENABLE);
+      NVIC_SetPriority(UART4_IRQn, UART_IRQ_PRIO);
+      NVIC_EnableIRQ(UART4_IRQn);
+    }
+    #endif
+    #if defined(UART5) && defined(UART5_IRQn)
+    if (_serial.uart == UART5) {
+      USART_ITConfig(UART5, USART_IT_RXNE, ENABLE);
+      NVIC_SetPriority(UART5_IRQn, UART_IRQ_PRIO);
+      NVIC_EnableIRQ(UART5_IRQn);
+    }
+    #endif
+    #if defined(USART6) && defined(USART6_IRQn)
+    if (_serial.uart == USART6) {
+      USART_ITConfig(USART6, USART_IT_RXNE, ENABLE);
+      NVIC_SetPriority(USART6_IRQn, UART_IRQ_PRIO);
+      NVIC_EnableIRQ(USART6_IRQn);
+    }
+    #endif
+    #if defined(UART7) && defined(UART7_IRQn)
+    if (_serial.uart == UART7) {
+      USART_ITConfig(UART7, USART_IT_RXNE, ENABLE);
+      NVIC_SetPriority(UART7_IRQn, UART_IRQ_PRIO);
+      NVIC_EnableIRQ(UART7_IRQn);
+    }
+    #endif
+    #if defined(UART8) && defined(UART8_IRQn)
+    if (_serial.uart == UART8) {
+      USART_ITConfig(UART8, USART_IT_RXNE, ENABLE);
+      NVIC_SetPriority(UART8_IRQn, UART_IRQ_PRIO);
+      NVIC_EnableIRQ(UART8_IRQn);
+    }
+    #endif
+  }
+#endif
 }
 
 void HardwareSerial::end()
 {
+  // MMOLE: reintroduced RX buffer to properly implement read/available/peek methods
+  // clear any received data
+  _rx_buffer_head = _rx_buffer_tail;
+
   uart_deinit(&_serial);
+
+#if(OPT_USART_INT==1)
+  if (_serial.uart != NULL) {
+    #if defined(USART1) && defined(USART1_IRQn)
+    if (_serial.uart == USART1) {
+      NVIC_DisableIRQ(USART1_IRQn);
+      USART_ITConfig(USART1, USART_IT_RXNE, DISABLE);
+    }
+    #endif
+    #if defined(USART2) && defined(USART2_IRQn)
+    if (_serial.uart == USART2) {
+      NVIC_DisableIRQ(USART2_IRQn);
+      USART_ITConfig(USART2, USART_IT_RXNE, DISABLE);
+    }
+    #endif
+    #if defined(USART3) && defined(USART3_IRQn)
+    if (_serial.uart == USART3) {
+      NVIC_DisableIRQ(USART3_IRQn);
+      USART_ITConfig(USART3, USART_IT_RXNE, DISABLE);
+    }
+    #endif
+    #if defined(USART4) && defined(USART4_IRQn)
+    if (_serial.uart == USART4) {
+      NVIC_DisableIRQ(USART4_IRQn);
+      USART_ITConfig(USART4, USART_IT_RXNE, DISABLE);
+    }
+    #elif defined(UART4) && defined(UART4_IRQn)
+    if (_serial.uart == UART4) {
+      NVIC_DisableIRQ(UART4_IRQn);
+      USART_ITConfig(UART4, USART_IT_RXNE, DISABLE);
+    }
+    #endif
+    #if defined(UART5) && defined(UART5_IRQn)
+    if (_serial.uart == UART5) {
+      NVIC_DisableIRQ(UART5_IRQn);
+      USART_ITConfig(UART5, USART_IT_RXNE, DISABLE);
+    }
+    #endif
+    #if defined(USART6) && defined(USART6_IRQn)
+    if (_serial.uart == USART6) {
+      NVIC_DisableIRQ(USART6_IRQn);
+      USART_ITConfig(USART6, USART_IT_RXNE, DISABLE);
+    }
+    #endif
+    #if defined(UART7) && defined(UART7_IRQn)
+    if (_serial.uart == UART7) {
+      NVIC_DisableIRQ(UART7_IRQn);
+      USART_ITConfig(UART7, USART_IT_RXNE, DISABLE);
+    }
+    #endif
+    #if defined(UART8) && defined(UART8_IRQn)
+    if (_serial.uart == UART8) {
+      NVIC_DisableIRQ(UART8_IRQn);
+      USART_ITConfig(UART8, USART_IT_RXNE, DISABLE);
+    }
+    #endif
+  }
+#endif
 }
 
 int HardwareSerial::available(void)
 {
-  return -1;
+  // MMOLE: reintroduced RX buffer to properly implement read/available/peek methods
+  //return -1;
+  return ((unsigned int)(SERIAL_RX_BUFFER_SIZE + _rx_buffer_head - _rx_buffer_tail)) & (SERIAL_RX_BUFFER_SIZE - 1);
 }
 
 int HardwareSerial::peek(void)
 {
-   return -1;
+  // MMOLE: reintroduced RX buffer to properly implement read/available/peek methods
+  // MMOLE 240316: Serial.parseInt() uses peek() with timeout to see if more data is available
+   //return -1;
+  if (_rx_buffer_head == _rx_buffer_tail) {
+    return -1;
+  } else {
+    return _rx_buffer[_rx_buffer_tail];
+  }
 }
 
 int HardwareSerial::read(void)
 {
-
   unsigned char c;
+  // MMOLE: reintroduced RX buffer to properly implement read/available/peek methods
+/*
   if(uart_getc(&_serial, &c) == 0){
     return c;
   }else{
     return -1;
+  }
+*/
+
+  // if the head isn't ahead of the tail, we don't have any characters
+  if (_rx_buffer_head == _rx_buffer_tail) {
+    return -1;
+  } else {
+    unsigned char c = _rx_buffer[_rx_buffer_tail];
+    _rx_buffer_tail = (rx_buffer_index_t)(_rx_buffer_tail + 1) & (SERIAL_RX_BUFFER_SIZE - 1);
+    return c;
   }
 }
 
 
 size_t HardwareSerial::write(const uint8_t *buffer, size_t size)
 {
-
-    return  uart_debug_write((uint8_t *)buffer, size);
+    for (size_t i = 0; i < size; i++) {
+      write(buffer[i]);
+    }
+    return size;
 }
 
 
 size_t HardwareSerial::write(uint8_t c)
 {
-  uint8_t buff = c;
-  return write(&buff, 1);
+  return uart_putc(&_serial, c) == 0 ? 1 : 0;
 }
 
 void HardwareSerial::setRx(uint32_t _rx)

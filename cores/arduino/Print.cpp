@@ -101,6 +101,7 @@ size_t Print::print(unsigned long n, int base)
   }
 }
 
+#if !defined(CORE_LIGHTWEIGHT_PRINT_NO_ULL)
 size_t Print::print(long long n, int base)
 {
   if (base == 0) {
@@ -125,11 +126,14 @@ size_t Print::print(unsigned long long n, int base)
     return printULLNumber(n, base);
   }
 }
+#endif
 
+#if !defined(CORE_LIGHTWEIGHT_PRINT_NO_FLOAT)
 size_t Print::print(double n, int digits)
 {
   return printFloat(n, digits);
 }
+#endif
 
 size_t Print::println(const __FlashStringHelper *ifsh)
 {
@@ -204,6 +208,7 @@ size_t Print::println(unsigned long num, int base)
   return n;
 }
 
+#if !defined(CORE_LIGHTWEIGHT_PRINT_NO_ULL)
 size_t Print::println(long long num, int base)
 {
   size_t n = print(num, base);
@@ -217,13 +222,16 @@ size_t Print::println(unsigned long long num, int base)
   n += println();
   return n;
 }
+#endif
 
+#if !defined(CORE_LIGHTWEIGHT_PRINT_NO_FLOAT)
 size_t Print::println(double num, int digits)
 {
   size_t n = print(num, digits);
   n += println();
   return n;
 }
+#endif
 
 size_t Print::println(const Printable &x)
 {
@@ -251,8 +259,168 @@ extern "C" {
     }
     return len;
   }
+
+  #if defined(UART_MODULE_ENABLED) && !defined(UART_MODULE_ONLY)
+  __attribute__((used, section(".gnu.warning.printf")))
+  const char printf_warning[] = "Using standard printf() will automatically initialize the default Hardware UART and output to the default TX pin (NOT the PC console directly). This may cause conflicts with other hardware connected to the TX pin, and increases binary size by 2-3KB.";
+  #endif
 }
 
+#if defined(CORE_LIGHTWEIGHT_PRINT)
+int Print::printf(const char *format, ...)
+{
+  va_list ap;
+  va_start(ap, format);
+  int retval = vprintf(format, ap);
+  va_end(ap);
+  return retval;
+}
+
+int Print::printf(const __FlashStringHelper *format, ...)
+{
+  va_list ap;
+  va_start(ap, format);
+  int retval = vprintf(reinterpret_cast<const char *>(format), ap);
+  va_end(ap);
+  return retval;
+}
+
+int Print::vprintf(const __FlashStringHelper *format, va_list ap)
+{
+  return vprintf(reinterpret_cast<const char *>(format), ap);
+}
+
+int Print::vprintf(const char *format, va_list ap)
+{
+  int count = 0;
+  char c;
+  while ((c = *format++)) {
+    if (c != '%') {
+      write(c);
+      count++;
+      continue;
+    }
+    
+    c = *format++;
+    if (c == '\0') break;
+    
+    bool zero_pad = false;
+    int width = 0;
+    if (c == '0') {
+      zero_pad = true;
+      c = *format++;
+    }
+    while (c >= '0' && c <= '9') {
+      width = width * 10 + (c - '0');
+      c = *format++;
+    }
+    
+    bool is_long = false;
+    if (c == 'l') {
+      is_long = true;
+      c = *format++;
+    }
+    
+    switch (c) {
+      case '%':
+        write('%');
+        count++;
+        break;
+      case 'c': {
+        char val = (char)va_arg(ap, int);
+        write(val);
+        count++;
+        break;
+      }
+      case 's': {
+        const char *s = va_arg(ap, const char*);
+        if (!s) s = "(null)";
+        while (*s) {
+          write(*s++);
+          count++;
+        }
+        break;
+      }
+      case 'd':
+      case 'i': {
+        long val = is_long ? va_arg(ap, long) : va_arg(ap, int);
+        unsigned long uval;
+        if (val < 0) {
+          write('-');
+          count++;
+          uval = -(unsigned long)val;
+        } else {
+          uval = val;
+        }
+        char buf[32];
+        int idx = 0;
+        do {
+          buf[idx++] = (uval % 10) + '0';
+          uval /= 10;
+        } while (uval > 0);
+        
+        while (idx < width) {
+          write(zero_pad ? '0' : ' ');
+          count++;
+          width--;
+        }
+        while (idx > 0) {
+          write(buf[--idx]);
+          count++;
+        }
+        break;
+      }
+      case 'u': {
+        unsigned long val = is_long ? va_arg(ap, unsigned long) : va_arg(ap, unsigned int);
+        char buf[32];
+        int idx = 0;
+        do {
+          buf[idx++] = (val % 10) + '0';
+          val /= 10;
+        } while (val > 0);
+        while (idx < width) {
+          write(zero_pad ? '0' : ' ');
+          count++;
+          width--;
+        }
+        while (idx > 0) {
+          write(buf[--idx]);
+          count++;
+        }
+        break;
+      }
+      case 'x':
+      case 'X': {
+        unsigned long val = is_long ? va_arg(ap, unsigned long) : va_arg(ap, unsigned int);
+        char buf[32];
+        int idx = 0;
+        char hex_base = (c == 'x') ? 'a' : 'A';
+        do {
+          int digit = val & 0xF;
+          buf[idx++] = (digit < 10) ? (digit + '0') : (digit - 10 + hex_base);
+          val >>= 4;
+        } while (val > 0);
+        while (idx < width) {
+          write(zero_pad ? '0' : ' ');
+          count++;
+          width--;
+        }
+        while (idx > 0) {
+          write(buf[--idx]);
+          count++;
+        }
+        break;
+      }
+      default:
+        write('%');
+        write(c);
+        count += 2;
+        break;
+    }
+  }
+  return count;
+}
+#else
 int Print::printf(const char *format, ...)
 {
   va_list ap;
@@ -280,6 +448,7 @@ int Print::vprintf(const __FlashStringHelper *format, va_list ap)
 {
   return vdprintf((int)this, (const char *)format, ap);
 }
+#endif
 
 
 // Private Methods /////////////////////////////////////////////////////////////
@@ -348,6 +517,7 @@ void Print::printULLNumber(uint64_t n, uint8_t base)
 // return write(str);
 // }
 
+#if !defined(CORE_LIGHTWEIGHT_PRINT_NO_ULL)
 // FAST IMPLEMENTATION FOR ULL
 size_t Print::printULLNumber(unsigned long long n64, uint8_t base)
 {
@@ -404,7 +574,9 @@ size_t Print::printULLNumber(unsigned long long n64, uint8_t base)
   }
   return bytes;
 }
+#endif
 
+#if !defined(CORE_LIGHTWEIGHT_PRINT_NO_FLOAT)
 size_t Print::printFloat(double number, uint8_t digits)
 {
   size_t n = 0;
@@ -456,3 +628,4 @@ size_t Print::printFloat(double number, uint8_t digits)
 
   return n;
 }
+#endif
