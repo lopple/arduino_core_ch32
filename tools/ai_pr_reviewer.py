@@ -2,6 +2,7 @@ import os
 import subprocess
 import urllib.request
 import urllib.parse
+import urllib.error
 import json
 
 def run_cmd(cmd):
@@ -109,7 +110,7 @@ def main():
 
     # Call Gemini API
     print("Calling Gemini API...")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={gemini_key}"
     headers = {"Content-Type": "application/json"}
     data = {
         "contents": [{
@@ -130,6 +131,13 @@ def main():
         with urllib.request.urlopen(req) as res:
             res_body = json.loads(res.read().decode("utf-8"))
             review_comment = res_body["candidates"][0]["content"]["parts"][0]["text"]
+    except urllib.error.HTTPError as e:
+        print(f"Failed to query Gemini API (HTTPError): {e}")
+        try:
+            print(f"Error response body: {e.read().decode('utf-8')}")
+        except Exception as read_err:
+            print(f"Failed to read error body: {read_err}")
+        return
     except Exception as e:
         print(f"Failed to query Gemini API: {e}")
         return
