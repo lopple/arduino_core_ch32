@@ -44,14 +44,14 @@ CH32V00x_EVT.menu.pnum.CH32V003F4.build.ch_extra_lib=-lprintf
 
 
 # Upload menu
-CH32V00x_EVT.menu.upload_method.minichlink=minichlink
-CH32V00x_EVT.menu.upload_method.minichlink.upload.protocol=
-CH32V00x_EVT.menu.upload_method.minichlink.upload.options=
-CH32V00x_EVT.menu.upload_method.minichlink.upload.tool=minichlink
 CH32V00x_EVT.menu.upload_method.swdMethod=WCH-SWD
 CH32V00x_EVT.menu.upload_method.swdMethod.upload.protocol=
 CH32V00x_EVT.menu.upload_method.swdMethod.upload.options=
 CH32V00x_EVT.menu.upload_method.swdMethod.upload.tool=WCH_linkE
+CH32V00x_EVT.menu.upload_method.minichlink=minichlink
+CH32V00x_EVT.menu.upload_method.minichlink.upload.protocol=
+CH32V00x_EVT.menu.upload_method.minichlink.upload.options=
+CH32V00x_EVT.menu.upload_method.minichlink.upload.tool=minichlink
 CH32V00x_EVT.menu.upload_method.ispMethod=WCH-ISP
 CH32V00x_EVT.menu.upload_method.ispMethod.upload.protocol=
 CH32V00x_EVT.menu.upload_method.ispMethod.upload.options=
