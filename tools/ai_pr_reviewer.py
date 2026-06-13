@@ -161,5 +161,6 @@ def main():
     except Exception as e:
         print(f"Failed to post comment to GitHub: {e}")
 
+# Trigger PR review test run
 if __name__ == "__main__":
     main()
