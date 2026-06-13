@@ -84,24 +84,24 @@ typedef enum {
 #ifdef __cplusplus
 } // close extern "C" first to define constexpr
 constexpr inline GPIO_TypeDef* constexpr_get_GPIO_Port(uint32_t p) {
-  return (p == 0) ? GPIOA :
+  return (p == PortA) ? GPIOA :
 #if defined(GPIOB_BASE)
-         (p == 1) ? GPIOB :
+         (p == PortB) ? GPIOB :
 #endif
 #if defined(GPIOC_BASE)
-         (p == 2) ? GPIOC :
+         (p == PortC) ? GPIOC :
 #endif
 #if defined(GPIOD_BASE)
-         (p == 3) ? GPIOD :
+         (p == PortD) ? GPIOD :
 #endif
 #if defined(GPIOE_BASE)
-         (p == 4) ? GPIOE :
+         (p == PortE) ? GPIOE :
 #endif
 #if defined(GPIOF_BASE)
-         (p == 5) ? GPIOF :
+         (p == PortF) ? GPIOF :
 #endif
 #if defined(GPIOG_BASE)
-         (p == 6) ? GPIOG :
+         (p == PortG) ? GPIOG :
 #endif
          (GPIO_TypeDef *)0;
 }
