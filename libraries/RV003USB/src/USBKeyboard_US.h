@@ -1,5 +1,5 @@
-#ifndef _RV003USB_KEYBOARD_US_H
-#define _RV003USB_KEYBOARD_US_H
+#ifndef _RV003USB_USB_KEYBOARD_US_H
+#define _RV003USB_USB_KEYBOARD_US_H
 
 #include "USBHID.h"
 #include "Print.h"
@@ -90,4 +90,4 @@ extern Keyboard_ &rv003usbKeyboard();
 
 #define Keyboard rv003usbKeyboard()
 
-#endif // _RV003USB_KEYBOARD_US_H
+#endif // _RV003USB_USB_KEYBOARD_US_H

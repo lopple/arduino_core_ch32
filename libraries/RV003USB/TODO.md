@@ -10,10 +10,10 @@ Keyboard support is intentionally exposed through an explicit layout header:
 
 ```cpp
 #include <USBHID.h>
-#include <Keyboard_US.h>
+#include <USBKeyboard_US.h>
 ```
 
-Consider adding `Keyboard_JIS.h` in a future change. The goal is for sketches
+Consider adding `USBKeyboard_JIS.h` in a future change. The goal is for sketches
 to include exactly one keyboard layout header, making the selected layout
 explicit and avoiding multiple ASCII maps in flash.
 

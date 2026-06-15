@@ -1,5 +1,5 @@
 #include <USBHID.h>
-#include <Keyboard_US.h>
+#include <USBKeyboard_US.h>
 
 void setup()
 {
