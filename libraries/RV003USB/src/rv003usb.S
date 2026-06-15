@@ -52,12 +52,7 @@ Compressed:
 	s0, s1,	a0, a1, a2, a3, a4, a5
 */
 
-#if !defined(CH32V00x) || !CH32V00x
-#warning "CH32V003"
 .section .text.vector_handler
-#else
-.section .srodata, "ax"
-#endif
 .global EXTI7_0_IRQHandler
 
 .balign 4
