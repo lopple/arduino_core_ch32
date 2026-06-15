@@ -1,39 +1,12 @@
-#include "USBKeyboard_US.h"
+#include "USBKeyboard.h"
 
 #include <string.h>
 
-#define RV003USB_KEY_SHIFT 0x80
+#define RV003USB_KEY_SHIFT 0x0100U
 
-// Arduino Keyboard-style ASCII input is mapped for a US keyboard layout.
-// The host OS layout still decides which character each HID key position emits.
-static const uint8_t _asciiMap[128] __attribute__((section(".rodata"))) = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x2a, 0x2b, 0x28, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x29, 0x00, 0x00, 0x00, 0x00,
-    0x2c, 0x1e | RV003USB_KEY_SHIFT, 0x34 | RV003USB_KEY_SHIFT, 0x20 | RV003USB_KEY_SHIFT,
-    0x21 | RV003USB_KEY_SHIFT, 0x22 | RV003USB_KEY_SHIFT, 0x24 | RV003USB_KEY_SHIFT, 0x34,
-    0x26 | RV003USB_KEY_SHIFT, 0x27 | RV003USB_KEY_SHIFT, 0x25 | RV003USB_KEY_SHIFT, 0x2e | RV003USB_KEY_SHIFT,
-    0x36, 0x2d, 0x37, 0x38,
-    0x27, 0x1e, 0x1f, 0x20, 0x21, 0x22, 0x23, 0x24,
-    0x25, 0x26, 0x33 | RV003USB_KEY_SHIFT, 0x33, 0x36 | RV003USB_KEY_SHIFT, 0x2e,
-    0x37 | RV003USB_KEY_SHIFT, 0x38 | RV003USB_KEY_SHIFT, 0x1f | RV003USB_KEY_SHIFT, 0x04 | RV003USB_KEY_SHIFT,
-    0x05 | RV003USB_KEY_SHIFT, 0x06 | RV003USB_KEY_SHIFT, 0x07 | RV003USB_KEY_SHIFT, 0x08 | RV003USB_KEY_SHIFT,
-    0x09 | RV003USB_KEY_SHIFT, 0x0a | RV003USB_KEY_SHIFT, 0x0b | RV003USB_KEY_SHIFT, 0x0c | RV003USB_KEY_SHIFT,
-    0x0d | RV003USB_KEY_SHIFT, 0x0e | RV003USB_KEY_SHIFT, 0x0f | RV003USB_KEY_SHIFT, 0x10 | RV003USB_KEY_SHIFT,
-    0x11 | RV003USB_KEY_SHIFT, 0x12 | RV003USB_KEY_SHIFT, 0x13 | RV003USB_KEY_SHIFT, 0x14 | RV003USB_KEY_SHIFT,
-    0x15 | RV003USB_KEY_SHIFT, 0x16 | RV003USB_KEY_SHIFT, 0x17 | RV003USB_KEY_SHIFT, 0x18 | RV003USB_KEY_SHIFT,
-    0x19 | RV003USB_KEY_SHIFT, 0x1a | RV003USB_KEY_SHIFT, 0x1b | RV003USB_KEY_SHIFT, 0x1c | RV003USB_KEY_SHIFT,
-    0x1d | RV003USB_KEY_SHIFT, 0x2f, 0x31, 0x30,
-    0x23 | RV003USB_KEY_SHIFT, 0x2d | RV003USB_KEY_SHIFT, 0x35, 0x04,
-    0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c,
-    0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14,
-    0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c,
-    0x1d, 0x2f | RV003USB_KEY_SHIFT, 0x31 | RV003USB_KEY_SHIFT, 0x30 | RV003USB_KEY_SHIFT,
-    0x35 | RV003USB_KEY_SHIFT, 0x00
-};
+static Keyboard_ *_rv003usbActiveKeyboard = nullptr;
 
-static bool rv003usbMapKeyboardKey(uint8_t key, uint8_t *hidKey, uint8_t *modifierMask)
+bool Keyboard_::mapKey(uint8_t key, uint8_t *hidKey, uint8_t *modifierMask)
 {
     *modifierMask = 0;
 
@@ -107,33 +80,28 @@ static bool rv003usbMapKeyboardKey(uint8_t key, uint8_t *hidKey, uint8_t *modifi
         return false;
     }
 
-    uint8_t mapped = _asciiMap[key];
+    RV003USBKeyboardMapEntry mapped = _asciiMap[key];
     if (mapped == 0) {
         return false;
     }
 
     if ((mapped & RV003USB_KEY_SHIFT) != 0) {
         *modifierMask = 0x02;
-        mapped &= (uint8_t)~RV003USB_KEY_SHIFT;
+        mapped &= (RV003USBKeyboardMapEntry)~RV003USB_KEY_SHIFT;
     }
 
-    *hidKey = mapped;
+    *hidKey = (uint8_t)mapped;
     return true;
 }
 
 static bool rv003usbKeyboardGetReport(KeyboardReport_t *report)
 {
-    return Keyboard.getReport(report);
-}
-
-Keyboard_ &rv003usbKeyboard()
-{
-    static Keyboard_ keyboard;
-    return keyboard;
+    return (_rv003usbActiveKeyboard != nullptr) && _rv003usbActiveKeyboard->getReport(report);
 }
 
 void Keyboard_::begin()
 {
+    _rv003usbActiveKeyboard = this;
     rv003usbSetKeyboardReportProvider(rv003usbKeyboardGetReport);
     USBHID.begin();
     memset(&_keyReport, 0, sizeof(_keyReport));
@@ -143,6 +111,9 @@ void Keyboard_::begin()
 void Keyboard_::end()
 {
     releaseAll();
+    if (_rv003usbActiveKeyboard == this) {
+        _rv003usbActiveKeyboard = nullptr;
+    }
     rv003usbSetKeyboardReportProvider(nullptr);
 }
 
@@ -163,7 +134,7 @@ size_t Keyboard_::press(uint8_t key)
     uint8_t hidKey;
     uint8_t modifierMask;
 
-    if (!rv003usbMapKeyboardKey(key, &hidKey, &modifierMask)) {
+    if (!mapKey(key, &hidKey, &modifierMask)) {
         return 0;
     }
 
@@ -199,7 +170,7 @@ size_t Keyboard_::release(uint8_t key)
     uint8_t hidKey;
     uint8_t modifierMask;
 
-    if (!rv003usbMapKeyboardKey(key, &hidKey, &modifierMask)) {
+    if (!mapKey(key, &hidKey, &modifierMask)) {
         return 0;
     }
 
@@ -231,6 +202,10 @@ void Keyboard_::releaseAll()
 
 size_t Keyboard_::write_char(uint8_t key)
 {
+    if (key == '\r') {
+        return 1;
+    }
+
     if (!press(key)) {
         return 0;
     }
