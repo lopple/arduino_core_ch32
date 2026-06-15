@@ -1,6 +1,19 @@
 #include "ch32fun.h"
 #include "rv003usb.h"
 
+// Upstream rv003usb uses CH32V00x for the non-CH32V003 timing path.
+// The Arduino core also defines CH32V00x for CH32V003F4, so use local
+// selectors instead of testing CH32V00x directly.
+#if defined(CH32V003F4) || defined(CH32V003)
+#define RV003USB_USE_CH32V003_TIMING 1
+#define RV003USB_RUN_CRITICAL_CODE_IN_RAM 0
+#else
+// Non-CH32V003 V00x parts may have flash execution too slow for USB timing,
+// so keep the time-critical USB code in RAM there.
+#define RV003USB_USE_CH32V003_TIMING 0
+#define RV003USB_RUN_CRITICAL_CODE_IN_RAM 1
+#endif
+
 #define CFGLR_OFFSET 0
 #define INDR_OFFSET 8
 #define BSHR_OFFSET 16
@@ -12,10 +25,11 @@
 #define SYSTICK 0xE000F000
 #define SYSTICK_CNT_OFFSET 8
 
-// Flash in CH32V00x is 1.5-2x slower than in CH32V003, this means we have to run USB time sensitive code from RAM.
-// But RAM code executes faster than FLASH code in CH32V003, this means we need to add extra delays.
-// It seems that adding extra delay per each branching instruction solves the most of the timing issues, but not all.
-#if !defined(CH32V00x) || !CH32V00x
+// On non-CH32V003 V00x parts, flash execution may be too slow for USB bit
+// timing. Upstream runs time-sensitive code from RAM there and adds small
+// delays because RAM execution is faster than CH32V003 flash timing.
+// Keep the upstream VOOXDELAY name for that per-branch delay.
+#if RV003USB_USE_CH32V003_TIMING
 // This is 6 * n + 3 cycles
 #define nx6p3delay( n, freereg ) li freereg, ((n)+1); 1: c.addi freereg, -1; c.bnez freereg, 1b
 // No delay needed fo CH32V003, so it's empty
@@ -52,7 +66,11 @@ Compressed:
 	s0, s1,	a0, a1, a2, a3, a4, a5
 */
 
+#if RV003USB_USE_CH32V003_TIMING
 .section .text.vector_handler
+#else
+.section .srodata, "ax"
+#endif
 .global EXTI7_0_IRQHandler
 
 .balign 4
@@ -83,7 +101,7 @@ EXTI7_0_IRQHandler:
 	c.andi a1, USB_DMASK;
 
 	// Finish jump to se0
-#if defined(CH32V00x) && CH32V00x
+#if RV003USB_RUN_CRITICAL_CODE_IN_RAM
 	VOOXDELAY
 	c.bnez a0, 1f
 	auipc t0, %hi(handle_se0_keepalive)
@@ -208,11 +226,13 @@ packet_type_loop:
 	// TODO: Maybe we could further sync bits here instead of take up time?
 	// I.e. can we do what we're doing above, here, and take less time, but sync
 	// up when possible.
-	li a3, 0xffff // Starting CRC of 0.   Because USB doesn't respect reverse CRCing.
-	li a4, 0xa001
+	c.lui a3, 0x10 // Starting CRC of 0.   Because USB doesn't respect reverse CRCing.
+	c.addi a3, -1
+	c.lui a4, 0xa
+	c.addi a4, 1
 	addi  t2, sp, DATA_PTR_OFFSET //rv003usb_internal_data
 	la  t0, 0x80
-#if defined(CH32V00x) && CH32V00x
+#if RV003USB_RUN_CRITICAL_CODE_IN_RAM
 	c.j 1f; 1:
 	c.j 1f; 1:
 #else 
@@ -232,7 +252,7 @@ packet_type_loop:
 	//c.srli a0, USB_PIN_DP
 	//c.addi a0, 1 // 00 -> 1, 11 -> 100
 	//c.andi a0, 1 // If 1, 1 if 0, 0
-#if defined(CH32V00x) && CH32V00x
+#if RV003USB_RUN_CRITICAL_CODE_IN_RAM
 	// c.nop // I don't understand why deliberately pushing loop off the sync makes USB work better...
 #endif
 	c.nop
@@ -273,7 +293,7 @@ packet_type_loop:
 	c.beqz a0, data_crc
 	c.li a4, 0x14	
 	c.li a3, 0x1e
-#if !defined(CH32V00x) || !CH32V00x
+#if RV003USB_USE_CH32V003_TIMING
 	.word 0x00000013 // nop, for alignment of data_crc.
 #endif
 
@@ -312,7 +332,7 @@ bit_process:
 	c.jumptype a0, is_end_of_byte /* 4 cycles for this section. (Checked) (Sometimes 5)? */ 
 
 	// VOOXDELAY
-#if defined(CH32V00x) && CH32V00x
+#if RV003USB_RUN_CRITICAL_CODE_IN_RAM
 	c.nop
 #endif
 	c.beqz a0, handle_one_bit
@@ -324,7 +344,7 @@ handle_zero_bit:
 	// If they are different, we need to sloowwww dowwwnnn
 	// There is some free time.  Could do something interesting here!!!
 	// I was thinking we could put the resync code here.
-#if defined(CH32V00x) && CH32V00x
+#if RV003USB_RUN_CRITICAL_CODE_IN_RAM
 	VOOXDELAY
 	c.nop
 #else
@@ -349,7 +369,7 @@ handle_zero_bit:
 	VOOXDELAY
 	VOOXDELAY
 
-#if !defined(CH32V00x) || !CH32V00x
+#if RV003USB_USE_CH32V003_TIMING
 	c.nop
 	c.nop
 #endif
@@ -360,7 +380,7 @@ handle_zero_bit:
 
 .balign 4
 handle_one_bit:
-#if defined(CH32V00x) && CH32V00x
+#if RV003USB_RUN_CRITICAL_CODE_IN_RAM
 	c.nop;
 #endif
 	c.addi s0, -1; // Count # of runs of 1 (subtract 1)
@@ -380,7 +400,7 @@ handle_one_bit:
 	VOOXDELAY
 	VOOXDELAY
 	VOOXDELAY
-#if !defined(CH32V00x) || !CH32V00x
+#if RV003USB_USE_CH32V003_TIMING
 	c.nop
 	c.nop
 #endif
@@ -452,7 +472,7 @@ se0_complete:
 	la a4, rv003usb_internal_data
 
 	// ACK doesn't need good CRC.
-#if !defined(CH32V00x) || !CH32V00x
+#if RV003USB_USE_CH32V003_TIMING
 	c.beqz a5, usb_pid_handle_ack
 
 	// Next, check for tokens.
@@ -480,7 +500,7 @@ may_be_a_token:
 	XW_C_LBU(s0, a4, MY_ADDRESS_OFFSET_BYTES);	//	lbu s0, MY_ADDRESS_OFFSET_BYTES(a4)
 	bne s0, a0, done_usb_message // addr != 0 && addr != ours.
 yes_check_tokens:
-#if !defined(CH32V00x) || !CH32V00x
+#if RV003USB_USE_CH32V003_TIMING
 	addi a5, a5, (0b01001011-0b10000111)
 	c.beqz a5, usb_pid_handle_out
 	c.addi a5, (0b10000111-0b10010110)
@@ -519,7 +539,7 @@ crc_for_tokens_would_be_bad_maybe_data:
 	c.addi a3, 1
 	addi a5, a5, (0b01001011-0b11000011)
 	c.li a2, 0
-#if !defined(CH32V00x) || !CH32V00x
+#if RV003USB_USE_CH32V003_TIMING
 	c.beqz a5, usb_pid_handle_data
 	c.addi a5, (0b11000011-0b11010010)
 	c.li a2, 1
@@ -586,7 +606,7 @@ interrupt_complete:
 
 ///////////////////////////////////////////////////////////////////////////////
 // High level functions.
-#if defined(CH32V00x) && CH32V00x
+#if RV003USB_RUN_CRITICAL_CODE_IN_RAM
 .section .text
 #endif
 #if defined(RV003USB_OPTIMIZE_FLASH) && RV003USB_OPTIMIZE_FLASH // Saves 20 bytes
@@ -614,7 +634,7 @@ usb_pid_handle_ack:
 	c.addi a0, 1
 	c.sw a0, (ENDP_OFFSET+EP_COUNT_OFFSET)(a2)
 
-#if defined(CH32V00x) && CH32V00x
+#if RV003USB_RUN_CRITICAL_CODE_IN_RAM
 	ret
 #else
 	c.j done_usb_message_in
@@ -644,7 +664,7 @@ usb_pid_handle_setup:
 	c.sw a1, (ENDP_OFFSET+EP_OPAQUE_OFFSET)(a2)  //e->opaque = 0;
 	c.sw a1, (ENDP_OFFSET+EP_TOGGLE_OUT_OFFSET)(a2) //e->toggle_out = 0;
 
-#if defined(CH32V00x) && CH32V00x
+#if RV003USB_RUN_CRITICAL_CODE_IN_RAM
 	ret
 #else
 	c.j done_usb_message_in	
@@ -658,7 +678,7 @@ usb_pid_handle_out:
 	//void usb_pid_handle_out( uint32_t addr, uint8_t * data, uint32_t endp, uint32_t unused, struct rv003usb_internal * ist )	
 	//sb a2, 0(a4) //ist->current_endpoint = endp;
 	XW_C_SB( a2, a4, 0 ); // current_endpoint = endp
-#if defined(CH32V00x) && CH32V00x
+#if RV003USB_RUN_CRITICAL_CODE_IN_RAM
 	ret
 #else
 	c.j done_usb_message_in
@@ -683,7 +703,7 @@ handle_se0_keepalive:
 
 	// Make sure we aren't in left field.
 	li a5, 4000
-#if !defined(CH32V00x) || !CH32V00x
+#if RV003USB_USE_CH32V003_TIMING
 	bge a2, a5, ret_from_se0
 	li a5, -4000
 	blt a2, a5, ret_from_se0
@@ -713,7 +733,7 @@ handle_se0_keepalive:
 	or a0, a0, a2
 	sw a0, 0(a4)
 
-#if !defined(CH32V00x) || !CH32V00x
+#if RV003USB_USE_CH32V003_TIMING
 	j ret_from_se0
 #else
 	1:
@@ -726,7 +746,7 @@ handle_se0_keepalive:
 // SEND DATA /////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
-#if defined(CH32V00x) && CH32V00x
+#if RV003USB_RUN_CRITICAL_CODE_IN_RAM
 .section .srodata, "ax"
 #endif
 
@@ -752,7 +772,7 @@ usb_send_data:
 	and a4, s1, a4
 
 	// Convert D+/D- into 2MHz outputs
-#if !defined(CH32V00x) || !CH32V00x
+#if RV003USB_USE_CH32V003_TIMING
 	li s1, ((0b0010<<(USB_PIN_DP*4)) | (0b0010<<(USB_PIN_DM*4)))
 #else
 	li s1, ((0b0001<<(USB_PIN_DP*4)) | (0b0001<<(USB_PIN_DM*4)))

@@ -19,6 +19,9 @@ static bool _rv003usbStarted = false;
 #define RV003USB_MICROS_WRAP_CYCLE_REMAINDER (RV003USB_SYSTICK_WRAP_CYCLES % RV003USB_CYCLES_PER_MICROSECOND)
 #define RV003USB_MILLIS_PER_WRAP (RV003USB_SYSTICK_WRAP_CYCLES / RV003USB_CYCLES_PER_MILLISECOND)
 #define RV003USB_MILLIS_WRAP_CYCLE_REMAINDER (RV003USB_SYSTICK_WRAP_CYCLES % RV003USB_CYCLES_PER_MILLISECOND)
+#define RV003USB_DM_PIN_MASK (1U << USB_PIN_DM)
+#define RV003USB_DM_CFGLR_MASK (0xFU << (USB_PIN_DM * 4U))
+#define RV003USB_DM_OUTPUT_PP_50MHZ (0x3U << (USB_PIN_DM * 4U))
 
 typedef struct {
     uint8_t buttons;
@@ -89,6 +92,35 @@ static uint32_t rv003usbReadSysTick(uint64_t *microsBase, uint32_t *microsRemain
     }
 }
 
+static void rv003usbDelayMicroseconds(uint32_t us)
+{
+    uint32_t startTicks = (uint32_t)SysTick->CNT;
+    uint32_t waitTicks = us * RV003USB_CYCLES_PER_MICROSECOND;
+
+    while ((uint32_t)((uint32_t)SysTick->CNT - startTicks) < waitTicks) {
+    }
+}
+
+static void rv003usbForceDisconnect()
+{
+    uint32_t savedCfglr = GPIOD->CFGLR;
+    uint32_t savedIntenr = EXTI->INTENR;
+
+    // Pulse D- low before usb_setup(); fixed pull-up boards otherwise may stay
+    // in a stale failed-enumeration state until the cable is physically replugged.
+    EXTI->INTENR &= ~RV003USB_DM_PIN_MASK;
+    GPIOD->CFGLR = (savedCfglr & ~RV003USB_DM_CFGLR_MASK) | RV003USB_DM_OUTPUT_PP_50MHZ;
+    GPIOD->BCR = RV003USB_DM_PIN_MASK;
+    // These delays are empirical values from limited hardware testing;
+    // they are not guaranteed by the USB specification.
+    rv003usbDelayMicroseconds(100000);
+
+    GPIOD->CFGLR = savedCfglr;
+    rv003usbDelayMicroseconds(1000);
+    EXTI->INTFR = RV003USB_DM_PIN_MASK;
+    EXTI->INTENR = savedIntenr;
+}
+
 static void rv003usbArduinoBegin()
 {
     if (_rv003usbStarted) {
@@ -110,6 +142,7 @@ static void rv003usbArduinoBegin()
     SysTick->CMP = 0xFFFFFFFFU;
     SysTick->CTLR = 0xF;
 
+    rv003usbForceDisconnect();
     usb_setup();
 }
 
