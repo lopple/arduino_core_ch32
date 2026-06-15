@@ -23,6 +23,14 @@ static inline void ch32v003_rv003usb_delayMicroseconds(uint32_t us)
 
 #define delayMicroseconds(us) ch32v003_rv003usb_delayMicroseconds(us)
 
+typedef struct {
+    uint8_t modifiers;
+    uint8_t reserved;
+    uint8_t keys[6];
+} __attribute__((packed)) KeyboardReport_t;
+
+typedef bool (*RV003USBKeyboardReportProvider)(KeyboardReport_t *report);
+
 class RV003USBHID_ {
 public:
     void begin();
@@ -30,5 +38,7 @@ public:
 };
 
 extern RV003USBHID_ USBHID;
+
+extern "C" void rv003usbSetKeyboardReportProvider(RV003USBKeyboardReportProvider provider);
 
 #endif // _USBHID_H

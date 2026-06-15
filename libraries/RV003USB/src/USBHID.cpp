@@ -11,6 +11,8 @@ static volatile uint32_t _rv003usbMicrosCycleRemainder = 0;
 static volatile uint64_t _rv003usbMillisBase = 0;
 static volatile uint32_t _rv003usbMillisCycleRemainder = 0;
 static bool _rv003usbStarted = false;
+// Registered by Keyboard.begin(); left null for raw/enumeration-only HID use.
+static RV003USBKeyboardReportProvider _rv003usbKeyboardReportProvider = nullptr;
 
 #define RV003USB_SYSTICK_WRAP_CYCLES (1ULL << 32)
 #define RV003USB_CYCLES_PER_MICROSECOND (F_CPU / 1000000U)
@@ -29,12 +31,6 @@ typedef struct {
     int8_t y;
     int8_t wheel;
 } __attribute__((packed)) RV003USBMouseReport;
-
-typedef struct {
-    uint8_t modifiers;
-    uint8_t reserved;
-    uint8_t keys[6];
-} __attribute__((packed)) RV003USBKeyboardReport;
 
 // Keep wrap accounting in ISR-sized chunks to avoid 64-bit division in millis()/micros().
 static void rv003usbAccumulateSysTickWrap(uint64_t *timeBase, uint32_t *cycleRemainder, uint64_t unitsPerWrap, uint32_t cyclesRemainderPerWrap, uint32_t cyclesPerUnit)
@@ -158,6 +154,11 @@ void RV003USBHID_::end()
 }
 
 extern "C" {
+void rv003usbSetKeyboardReportProvider(RV003USBKeyboardReportProvider provider)
+{
+    _rv003usbKeyboardReportProvider = provider;
+}
+
 // Strong timebase overrides used only when this library is linked into the sketch.
 uint64_t GetTick(void)
 {
@@ -211,7 +212,10 @@ void usb_handle_user_in_request(struct usb_endpoint *e, uint8_t *scratchpad, int
     }
 
     if (endp == 2) {
-        static const RV003USBKeyboardReport keyboardReport = {0, 0, {0, 0, 0, 0, 0, 0}};
+        KeyboardReport_t keyboardReport = {0, 0, {0, 0, 0, 0, 0, 0}};
+        if (_rv003usbKeyboardReportProvider != nullptr) {
+            _rv003usbKeyboardReportProvider(&keyboardReport);
+        }
         usb_send_data(&keyboardReport, sizeof(keyboardReport), 0, sendtok);
         return;
     }
