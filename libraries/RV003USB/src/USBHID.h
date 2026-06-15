@@ -29,7 +29,15 @@ typedef struct {
     uint8_t keys[6];
 } __attribute__((packed)) KeyboardReport_t;
 
+typedef struct {
+    uint8_t buttons;
+    int8_t x;
+    int8_t y;
+    int8_t wheel;
+} __attribute__((packed)) MouseReport_t;
+
 typedef bool (*RV003USBKeyboardReportProvider)(KeyboardReport_t *report);
+typedef bool (*RV003USBMouseReportProvider)(MouseReport_t *report);
 
 class RV003USBHID_ {
 public:
@@ -40,5 +48,6 @@ public:
 extern RV003USBHID_ USBHID;
 
 extern "C" void rv003usbSetKeyboardReportProvider(RV003USBKeyboardReportProvider provider);
+extern "C" void rv003usbSetMouseReportProvider(RV003USBMouseReportProvider provider);
 
 #endif // _USBHID_H

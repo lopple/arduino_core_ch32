@@ -11,8 +11,9 @@ static volatile uint32_t _rv003usbMicrosCycleRemainder = 0;
 static volatile uint64_t _rv003usbMillisBase = 0;
 static volatile uint32_t _rv003usbMillisCycleRemainder = 0;
 static bool _rv003usbStarted = false;
-// Registered by Keyboard.begin(); left null for raw/enumeration-only HID use.
+// Registered by Keyboard.begin()/Mouse.begin(); left null for raw/enumeration-only HID use.
 static RV003USBKeyboardReportProvider _rv003usbKeyboardReportProvider = nullptr;
+static RV003USBMouseReportProvider _rv003usbMouseReportProvider = nullptr;
 
 #define RV003USB_SYSTICK_WRAP_CYCLES (1ULL << 32)
 #define RV003USB_CYCLES_PER_MICROSECOND (F_CPU / 1000000U)
@@ -24,13 +25,6 @@ static RV003USBKeyboardReportProvider _rv003usbKeyboardReportProvider = nullptr;
 #define RV003USB_DM_PIN_MASK (1U << USB_PIN_DM)
 #define RV003USB_DM_CFGLR_MASK (0xFU << (USB_PIN_DM * 4U))
 #define RV003USB_DM_OUTPUT_PP_50MHZ (0x3U << (USB_PIN_DM * 4U))
-
-typedef struct {
-    uint8_t buttons;
-    int8_t x;
-    int8_t y;
-    int8_t wheel;
-} __attribute__((packed)) RV003USBMouseReport;
 
 // Keep wrap accounting in ISR-sized chunks to avoid 64-bit division in millis()/micros().
 static void rv003usbAccumulateSysTickWrap(uint64_t *timeBase, uint32_t *cycleRemainder, uint64_t unitsPerWrap, uint32_t cyclesRemainderPerWrap, uint32_t cyclesPerUnit)
@@ -159,6 +153,11 @@ void rv003usbSetKeyboardReportProvider(RV003USBKeyboardReportProvider provider)
     _rv003usbKeyboardReportProvider = provider;
 }
 
+void rv003usbSetMouseReportProvider(RV003USBMouseReportProvider provider)
+{
+    _rv003usbMouseReportProvider = provider;
+}
+
 // Strong timebase overrides used only when this library is linked into the sketch.
 uint64_t GetTick(void)
 {
@@ -206,7 +205,10 @@ void usb_handle_user_in_request(struct usb_endpoint *e, uint8_t *scratchpad, int
     (void)ist;
 
     if (endp == 1) {
-        static const RV003USBMouseReport mouseReport = {0, 0, 0, 0};
+        MouseReport_t mouseReport = {0, 0, 0, 0};
+        if (_rv003usbMouseReportProvider != nullptr) {
+            _rv003usbMouseReportProvider(&mouseReport);
+        }
         usb_send_data(&mouseReport, sizeof(mouseReport), 0, sendtok);
         return;
     }
