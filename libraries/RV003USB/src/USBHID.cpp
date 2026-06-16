@@ -1,5 +1,7 @@
 #include "USBHID.h"
 
+#include <string.h>
+
 extern "C" {
 #include "rv003usb.h"
 #include "ch32fun.h"
@@ -14,6 +16,12 @@ static bool _rv003usbStarted = false;
 // Registered by Keyboard.begin()/Mouse.begin(); left null for raw/enumeration-only HID use.
 static RV003USBKeyboardReportProvider _rv003usbKeyboardReportProvider = nullptr;
 static RV003USBMouseReportProvider _rv003usbMouseReportProvider = nullptr;
+static constexpr uint8_t RV003USB_MONITOR_INPUT_REPORT_ID = 0xA1;
+static constexpr uint8_t RV003USB_MONITOR_PROTOCOL_VERSION = 0x01;
+static constexpr uint8_t RV003USB_MONITOR_NOTIFY_TX_READY = 0x01;
+static constexpr uint8_t RV003USB_MONITOR_INPUT_REPORT_SIZE = 8;
+static constexpr uint8_t RV003USB_MONITOR_INPUT_FLAGS_OFFSET = 2;
+static constexpr uint8_t RV003USB_MONITOR_INPUT_RESERVED_OFFSET = 3;
 
 #define RV003USB_SYSTICK_WRAP_CYCLES (1ULL << 32)
 #define RV003USB_CYCLES_PER_MICROSECOND (F_CPU / 1000000U)
@@ -158,6 +166,12 @@ void rv003usbSetMouseReportProvider(RV003USBMouseReportProvider provider)
     _rv003usbMouseReportProvider = provider;
 }
 
+uint8_t rv003usbMonitorHasTxData(void) __attribute__((weak));
+uint8_t rv003usbMonitorHasTxData(void)
+{
+    return 0;
+}
+
 // Strong timebase overrides used only when this library is linked into the sketch.
 uint64_t GetTick(void)
 {
@@ -222,7 +236,54 @@ void usb_handle_user_in_request(struct usb_endpoint *e, uint8_t *scratchpad, int
         return;
     }
 
+    if (endp == 3) {
+        if (rv003usbMonitorHasTxData() == 0) {
+            usb_send_empty(sendtok);
+            return;
+        }
+        scratchpad[0] = RV003USB_MONITOR_INPUT_REPORT_ID;
+        scratchpad[1] = RV003USB_MONITOR_PROTOCOL_VERSION;
+        scratchpad[RV003USB_MONITOR_INPUT_FLAGS_OFFSET] = RV003USB_MONITOR_NOTIFY_TX_READY;
+        memset(
+            scratchpad + RV003USB_MONITOR_INPUT_RESERVED_OFFSET,
+            0,
+            RV003USB_MONITOR_INPUT_REPORT_SIZE - RV003USB_MONITOR_INPUT_RESERVED_OFFSET);
+        usb_send_data(scratchpad, RV003USB_MONITOR_INPUT_REPORT_SIZE, 0, sendtok);
+        return;
+    }
+
     usb_send_empty(sendtok);
+}
+
+void usb_handle_hid_get_report_start(struct usb_endpoint *e, int reqLen, uint32_t lValueLSBIndexMSB)
+    __attribute__((weak));
+void usb_handle_hid_get_report_start(struct usb_endpoint *e, int reqLen, uint32_t lValueLSBIndexMSB)
+{
+    (void)reqLen;
+    (void)lValueLSBIndexMSB;
+    e->opaque = nullptr;
+    e->max_len = 0;
+}
+
+void usb_handle_hid_set_report_start(struct usb_endpoint *e, int reqLen, uint32_t lValueLSBIndexMSB)
+    __attribute__((weak));
+void usb_handle_hid_set_report_start(struct usb_endpoint *e, int reqLen, uint32_t lValueLSBIndexMSB)
+{
+    (void)reqLen;
+    (void)lValueLSBIndexMSB;
+    e->count = 0;
+    e->max_len = 0;
+}
+
+void usb_handle_user_data(struct usb_endpoint *e, int current_endpoint, uint8_t *data, int len, struct rv003usb_internal *ist)
+    __attribute__((weak));
+void usb_handle_user_data(struct usb_endpoint *e, int current_endpoint, uint8_t *data, int len, struct rv003usb_internal *ist)
+{
+    (void)e;
+    (void)current_endpoint;
+    (void)data;
+    (void)len;
+    (void)ist;
 }
 
 }

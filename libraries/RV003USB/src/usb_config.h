@@ -1,8 +1,9 @@
 #ifndef _USB_CONFIG_H
 #define _USB_CONFIG_H
 
-//Defines the number of endpoints for this device. (Always add one for EP0). For two EPs, this should be 3.
-#define ENDPOINTS 3
+// Defines the number of endpoints for this composite device. Always add one
+// for EP0. TODO: split descriptors so this can follow the enabled HID features.
+#define ENDPOINTS 4
 
 #define USB_PORT D     // [A,C,D] GPIO Port to use with D+, D- and DPU
 #define USB_PIN_DP 3   // [0-4] GPIO Number for USB D+ Pin
@@ -13,8 +14,8 @@
 #define RV003USB_EVENT_DEBUGGING   0
 #define RV003USB_HANDLE_IN_REQUEST 1
 #define RV003USB_OTHER_CONTROL     0
-#define RV003USB_HANDLE_USER_DATA  0
-#define RV003USB_HID_FEATURES      0
+#define RV003USB_HANDLE_USER_DATA  1
+#define RV003USB_HID_FEATURES      1
 
 #ifndef __ASSEMBLER__
 
@@ -29,12 +30,14 @@
 #define HID_LOGICAL_MIN(x) RV003USB_HID_ITEM(x, 1, RV003USB_HID_GLOBAL, 1)
 #define HID_LOGICAL_MAX(x) RV003USB_HID_ITEM(x, 2, RV003USB_HID_GLOBAL, 1)
 #define HID_REPORT_SIZE(x) RV003USB_HID_ITEM(x, 7, RV003USB_HID_GLOBAL, 1)
+#define HID_REPORT_ID(x) RV003USB_HID_ITEM(x, 8, RV003USB_HID_GLOBAL, 1)
 #define HID_REPORT_COUNT(x) RV003USB_HID_ITEM(x, 9, RV003USB_HID_GLOBAL, 1)
 #define HID_USAGE(x) RV003USB_HID_ITEM(x, 0, RV003USB_HID_LOCAL, 1)
 #define HID_USAGE_MIN(x) RV003USB_HID_ITEM(x, 1, RV003USB_HID_LOCAL, 1)
 #define HID_USAGE_MAX(x) RV003USB_HID_ITEM(x, 2, RV003USB_HID_LOCAL, 1)
 #define HID_INPUT(x) RV003USB_HID_ITEM(x, 8, RV003USB_HID_MAIN, 1)
 #define HID_OUTPUT(x) RV003USB_HID_ITEM(x, 9, RV003USB_HID_MAIN, 1)
+#define HID_FEATURE(x) RV003USB_HID_ITEM(x, 11, RV003USB_HID_MAIN, 1)
 #define HID_COLLECTION(x) RV003USB_HID_ITEM(x, 10, RV003USB_HID_MAIN, 1)
 #define HID_COLLECTION_END 0xc0
 
@@ -50,6 +53,7 @@
 #define HID_USAGE_DESKTOP_WHEEL 0x38
 #define HID_COLLECTION_PHYSICAL 0x00
 #define HID_COLLECTION_APPLICATION 0x01
+#define HID_COLLECTION_LOGICAL 0x02
 
 #ifdef INSTANCE_DESCRIPTORS
 //Taken from http://www.usbmadesimple.co.uk/ums_ms_desc_dev.htm
@@ -149,6 +153,22 @@ static const uint8_t keyboard_hid_desc[] = {   /* USB report descriptor */
     HID_COLLECTION_END,                               // END_COLLECTION
 };
 
+static const uint8_t monitor_hid_desc[] = {
+	0x06, 0x00, 0xff,                              // USAGE_PAGE (Vendor Defined 0xff00)
+	HID_USAGE( 0x00 ),
+	HID_COLLECTION( HID_COLLECTION_APPLICATION ),
+		HID_REPORT_SIZE( 8 ),
+		HID_REPORT_COUNT( 63 ),
+		HID_REPORT_ID( 0xA0 ),
+		HID_USAGE( 0x01 ),
+		HID_FEATURE( 0x02 ),
+		HID_REPORT_COUNT( 7 ),
+		HID_REPORT_ID( 0xA1 ),
+		HID_USAGE( 0x02 ),
+		HID_INPUT( 0x02 ),
+	HID_COLLECTION_END,
+};
+
 //Ever wonder how you have more than 6 keys down at the same time on a USB keyboard?  It's easy. Enumerate two keyboards!
 // No, really, that's what some hardware manufacturers do.
 
@@ -156,8 +176,8 @@ static const uint8_t config_descriptor[] = {  //Mostly stolen from a USB mouse I
 	// configuration descriptor, USB spec 9.6.3, page 264-266, Table 9-10
 	9, 					// bLength;
 	2,					// bDescriptorType;
-	0x3b, 0x00,			// wTotalLength
-	0x02,					// bNumInterfaces (Normally 1)
+	0x54, 0x00,			// wTotalLength
+	0x03,					// bNumInterfaces (Normally 1)
 	0x01,					// bConfigurationValue
 	0x00,					// iConfiguration
 	0x80,					// bmAttributes (was 0xa0)
@@ -218,6 +238,33 @@ static const uint8_t config_descriptor[] = {  //Mostly stolen from a USB mouse I
 	0x03, //Attributes
 	0x08,	0x00, //Size (8 bytes)
 	10, //Interval Number of milliseconds between polls.
+
+	// HID monitor interface. Feature reports carry data; interrupt IN only
+	// notifies the host that data may be waiting.
+	9,					// bLength
+	4,					// bDescriptorType
+	2,					// bInterfaceNumber
+	0,					// bAlternateSetting
+	1,					// bNumEndpoints
+	0x03,					// bInterfaceClass (0x03 = HID)
+	0x00,					// bInterfaceSubClass
+	0x00,					// bInterfaceProtocol (none)
+	0,					// iInterface
+
+	9,					// bLength
+	0x21,					// bDescriptorType (HID)
+	0x10,0x01,				// bcd 1.1
+	0x00,					// country code
+	0x01,					// Num descriptors
+	0x22,					// DescriptorType[0] (HID)
+	sizeof(monitor_hid_desc), 0x00,
+
+	7,					// bLength
+	0x05,					// bDescriptorType (Endpoint)
+	0x83,					// bEndpointAddress (EP3 IN)
+	0x03,					// bmAttributes (Interrupt)
+	0x08, 0x00,				// wMaxPacketSize
+	100,					// bInterval (ms)
 };
 
 #define STR_MANUFACTURER u"CNLohr"
@@ -263,6 +310,8 @@ const static struct descriptor_list_struct {
 	{0x00000200, config_descriptor, sizeof(config_descriptor)},
 	{0x00002200, mouse_hid_desc, sizeof(mouse_hid_desc)},
 	{0x00012200, keyboard_hid_desc, sizeof(keyboard_hid_desc)},
+	{0x00022200, monitor_hid_desc, sizeof(monitor_hid_desc)},
+	{0x00022100, config_descriptor + 68, 9},
 	{0x00000300, (const uint8_t *)&string0, 4},
 	{0x04090301, (const uint8_t *)&string1, sizeof(STR_MANUFACTURER)},
 	{0x04090302, (const uint8_t *)&string2, sizeof(STR_PRODUCT)},
