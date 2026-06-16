@@ -67,7 +67,8 @@ uint32_t getCurrentMillis(void)
   * @param  None
   * @retval None
   */
-uint32_t getCurrentMicros(void)
+// Weak so a USB library can replace the timebase without changing non-USB builds.
+WEAK uint32_t getCurrentMicros(void)
 {
   // Optimize: Avoid 64-bit/32-bit software division (which takes ~200 cycles and bloats binary).
   // Precalculate the inverse scaling factor (1<<32) / cycles_per_us once at startup,
@@ -96,7 +97,8 @@ uint32_t getCurrentMicros(void)
  *
  * @return  none
  */
-void SysTick_Handler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+// Weak so rv003usb can use SysTick as a free-running counter only when linked.
+void SysTick_Handler(void) __attribute__((weak, interrupt("WCH-Interrupt-fast")));
 void SysTick_Handler(void)
 {
   msTick+=TICK_FREQ_1KHz;

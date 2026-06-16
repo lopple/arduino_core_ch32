@@ -28,7 +28,8 @@ extern "C" {
 /* Exported functions ------------------------------------------------------- */
 WEAK uint64_t GetTick(void);
 uint32_t getCurrentMillis(void);
-uint32_t getCurrentMicros(void);
+// USB libraries may provide a strong replacement while ordinary sketches keep this implementation.
+WEAK uint32_t getCurrentMicros(void);
 
 // void configIPClock(void);
 // void enableClock(sourceClock_t source);
