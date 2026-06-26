@@ -88,6 +88,20 @@ build.usb_flags=
 build.vid=0
 build.pid=0
 
+# Pluggable discovery and monitor support.
+# Declaring a custom discovery/monitor disables Arduino's legacy automatic
+# built-in fallback, so keep the serial paths explicit.
+pluggable_discovery.required.0=builtin:serial-discovery
+pluggable_discovery.required.1=builtin:mdns-discovery
+pluggable_monitor.required.serial=builtin:serial-monitor
+
+# HID monitor integration for arduino-hid-monitor tool packages.
+# The v0.1.0 package is Windows-only, so expose this protocol on Windows only.
+hid_monitor.discovery.vid=1209
+hid_monitor.discovery.pid=c003
+pluggable_discovery.hid-monitor.pattern.windows="{runtime.tools.arduino-hid-monitor.path}/bin/hid-discovery.exe" --vid "{hid_monitor.discovery.vid}" --pid "{hid_monitor.discovery.pid}"
+pluggable_monitor.pattern.hid-monitor.windows="{runtime.tools.arduino-hid-monitor.path}/bin/hid-monitor.exe"
+
 # Build information's     
 #####################-D{build.board} -DARDUINO_ARCH_{build.arch} -DBOARD_NAME="{build.board}" -DVARIANT_H="{build.variant_h}"
 build.info.flags=-DARDUINO_ARCH_CH32 -D{build.series} -DARDUINO={runtime.ide.version} -D{build.chip} -DVARIANT_H="{build.variant_h}" {build.usb_flags}
