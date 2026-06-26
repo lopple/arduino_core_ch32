@@ -124,6 +124,21 @@ static void rv003usbMonitorPrepareSimpleResponse(uint8_t command, uint8_t sequen
     rv003usbMonitorPrepareResponse(command, sequence, status, nullptr, 0);
 }
 
+static void rv003usbMonitorPreparePingResponse(uint8_t sequence)
+{
+    memset(_rv003usbMonitorReportTxFrame, 0, sizeof(_rv003usbMonitorReportTxFrame));
+    _rv003usbMonitorReportTxFrame[0] = RV003USB_MONITOR_REPORT_ID;
+    _rv003usbMonitorReportTxFrame[1] = RV003USB_MONITOR_PROTOCOL_VERSION;
+    _rv003usbMonitorReportTxFrame[2] = RV003USB_MONITOR_CMD_PING;
+    _rv003usbMonitorReportTxFrame[3] = sequence;
+    _rv003usbMonitorReportTxFrame[4] = 4;
+    _rv003usbMonitorReportTxFrame[5] = RV003USB_MONITOR_STATUS_OK;
+    _rv003usbMonitorReportTxFrame[8] = 'P';
+    _rv003usbMonitorReportTxFrame[9] = 'O';
+    _rv003usbMonitorReportTxFrame[10] = 'N';
+    _rv003usbMonitorReportTxFrame[11] = 'G';
+}
+
 static bool rv003usbMonitorHeaderIsValid()
 {
     return (_rv003usbMonitorSetHeader[0] == RV003USB_MONITOR_REPORT_ID)
@@ -209,11 +224,9 @@ static void rv003usbMonitorProcessFrame()
     }
 
     switch (command) {
-    case RV003USB_MONITOR_CMD_PING: {
-        const uint8_t pong[] = {'P', 'O', 'N', 'G'};
-        rv003usbMonitorPrepareResponse(command, sequence, RV003USB_MONITOR_STATUS_OK, pong, sizeof(pong));
+    case RV003USB_MONITOR_CMD_PING:
+        rv003usbMonitorPreparePingResponse(sequence);
         break;
-    }
     case RV003USB_MONITOR_CMD_WRITE:
         rv003usbMonitorPrepareSimpleResponse(command, sequence, RV003USB_MONITOR_STATUS_OK);
         break;

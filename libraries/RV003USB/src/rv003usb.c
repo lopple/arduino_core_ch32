@@ -55,6 +55,7 @@ struct rv003usb_internal rv003usb_internal_data;
 void usb_setup()
 {
 	rv003usb_internal_data.se0_windup = 0;
+	rv003usbInitSerialStringDescriptor();
 
 	// Enable GPIOs, TIMERs
 	RCC->APB2PCENR |= LOCAL_EXP( RCC_APB2Periph_GPIO, USB_PORT ) | RCC_APB2Periph_AFIO;
