@@ -81,8 +81,41 @@ typedef enum {
 
 #define MAX_NB_PORT (LastPort-FirstPort+1)
 
+#ifdef __cplusplus
+} // close extern "C" first to define constexpr
+constexpr inline GPIO_TypeDef* constexpr_get_GPIO_Port(uint32_t p) {
+  return (p == PortA) ? GPIOA :
+#if defined(GPIOB_BASE)
+         (p == PortB) ? GPIOB :
+#endif
+#if defined(GPIOC_BASE)
+         (p == PortC) ? GPIOC :
+#endif
+#if defined(GPIOD_BASE)
+         (p == PortD) ? GPIOD :
+#endif
+#if defined(GPIOE_BASE)
+         (p == PortE) ? GPIOE :
+#endif
+#if defined(GPIOF_BASE)
+         (p == PortF) ? GPIOF :
+#endif
+#if defined(GPIOG_BASE)
+         (p == PortG) ? GPIOG :
+#endif
+         (GPIO_TypeDef *)0;
+}
+extern "C" {
+#endif
+
 /* Return GPIO base address */
+#ifdef __cplusplus
+#define get_GPIO_Port(p) \
+  (__builtin_constant_p(p) ? constexpr_get_GPIO_Port(p) : \
+   ((p < MAX_NB_PORT) ? GPIOPort[p] : (GPIO_TypeDef *)NULL))
+#else
 #define get_GPIO_Port(p) ((p < MAX_NB_PORT) ? GPIOPort[p] : (GPIO_TypeDef *)NULL)
+#endif
 /* Enable GPIO clock and return GPIO base address */
 GPIO_TypeDef *set_GPIO_Port_Clock(uint32_t port_idx);
 

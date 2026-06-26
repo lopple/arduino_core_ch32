@@ -84,6 +84,50 @@ static const uint32_t SDA = PIN_WIRE_SDA;
 static const uint32_t SCL = PIN_WIRE_SCL;
 
 #ifdef __cplusplus
+#if defined(CH32V00x)
+constexpr PinName constexpr_digitalPin[] = {
+  PA_1,   // D0/A1   
+  PA_2,   // D1/A0
+  PC_0,   // D2
+  PC_1,   // D3
+  PC_2,   // D4
+  PC_3,   // D5 
+  PC_4,   // D6/A2
+  PC_5,   // D7
+  PC_6,   // D8
+  PC_7,   // D9
+  PD_0,   // D10
+  PD_1,   // D11
+  PD_2,   // D12/A3
+  PD_3,   // D13/A4
+  PD_4,   // D14/A7
+  PD_5,   // D15/A5
+  PD_6,   // D16/A6  
+  PD_7    // D17
+};
+
+constexpr uint32_t constexpr_analogInputPin[] = {
+  1,    // A0/PA2
+  0,    // A1/PA1
+  6,    // A2/PC4
+  12,   // A3/PD2
+  13,   // A4/PD3
+  15,   // A5/PD5
+  16,   // A6/PD6
+  14    // A7/PD4 
+};
+
+constexpr inline PinName constexpr_digitalPinToPinName(uint32_t p) {
+  return ((((p) & PNUM_MASK) < 18) ?
+            (PinName)(constexpr_digitalPin[(p) & PNUM_MASK] | ((p) & ALTX_MASK)) :
+            (((p) & PNUM_ANALOG_BASE) == PNUM_ANALOG_BASE) &&
+            (((p) & PNUM_MASK) < NUM_ANALOG_INTERNAL_FIRST) ?
+            (PinName)(constexpr_digitalPin[constexpr_analogInputPin[(p) & PNUM_ANALOG_INDEX]] | ((p) & ALTX_MASK)) : NC);
+}
+#endif
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 extern const PinName digitalPin[];
@@ -92,17 +136,28 @@ extern const uint32_t analogInputPin[];
 #define NOT_AN_INTERRUPT            (uint32_t)NC
 
 /* Convert a digital pin number Dxx to a PinName PX_n */
-#if NUM_ANALOG_INPUTS > 0
-/* Note: Analog pin is also a digital pin */
+#ifdef __cplusplus
+#if defined(CH32V00x)
+#define digitalPinToPinName(p)      (__builtin_constant_p(p) ? constexpr_digitalPinToPinName(p) : \
+            ((((uint32_t)(p) & PNUM_MASK) < NUM_DIGITAL_PINS) ? \
+            (PinName)(digitalPin[(uint32_t)(p) & PNUM_MASK] | ((p) & ALTX_MASK)) : \
+            (((uint32_t)(p) & PNUM_ANALOG_BASE) == PNUM_ANALOG_BASE) && \
+            (((uint32_t)(p) & PNUM_MASK) < NUM_ANALOG_INTERNAL_FIRST) ? \
+            (PinName)(digitalPin[analogInputPin[(p) & PNUM_ANALOG_INDEX]] | ((p) & ALTX_MASK)) : NC))
+#else
 #define digitalPinToPinName(p)      ((((uint32_t)(p) & PNUM_MASK) < NUM_DIGITAL_PINS) ? \
             (PinName)(digitalPin[(uint32_t)(p) & PNUM_MASK] | ((p) & ALTX_MASK)) : \
             (((uint32_t)(p) & PNUM_ANALOG_BASE) == PNUM_ANALOG_BASE) && \
             (((uint32_t)(p) & PNUM_MASK) < NUM_ANALOG_INTERNAL_FIRST) ? \
             (PinName)(digitalPin[analogInputPin[(p) & PNUM_ANALOG_INDEX]] | ((p) & ALTX_MASK)) : NC)
-#else
+#endif
+#else // C
 #define digitalPinToPinName(p)      ((((uint32_t)(p) & PNUM_MASK) < NUM_DIGITAL_PINS) ? \
-            (PinName)(digitalPin[(uint32_t)(p) & PNUM_MASK] | ((p) & ALTX_MASK)) : NC)
-#endif /* NUM_ANALOG_INPUTS > 0 */
+            (PinName)(digitalPin[(uint32_t)(p) & PNUM_MASK] | ((p) & ALTX_MASK)) : \
+            (((uint32_t)(p) & PNUM_ANALOG_BASE) == PNUM_ANALOG_BASE) && \
+            (((uint32_t)(p) & PNUM_MASK) < NUM_ANALOG_INTERNAL_FIRST) ? \
+            (PinName)(digitalPin[analogInputPin[(p) & PNUM_ANALOG_INDEX]] | ((p) & ALTX_MASK)) : NC)
+#endif
 /* Convert a PinName PX_n to a digital pin number */
 uint32_t pinNametoDigitalPin(PinName p);
 

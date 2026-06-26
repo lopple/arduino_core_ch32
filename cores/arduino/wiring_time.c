@@ -24,7 +24,7 @@ extern "C" {
 
 uint32_t millis(void)
 {
-  // ToDo: ensure no interrupts
+  // getCurrentMillis() internally calls GetTick() which reads msTick atomically, so interrupt disabling is not needed.
   return getCurrentMillis();
 }
 

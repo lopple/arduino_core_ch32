@@ -76,27 +76,12 @@ typedef enum {
 } timer_index_t;
 
 
-typedef enum
-{
-  HAL_TIM_ACTIVE_CHANNEL_1        = 0x01U,    /*!< The active channel is 1     */
-  HAL_TIM_ACTIVE_CHANNEL_2        = 0x02U,    /*!< The active channel is 2     */
-  HAL_TIM_ACTIVE_CHANNEL_3        = 0x04U,    /*!< The active channel is 3     */
-  HAL_TIM_ACTIVE_CHANNEL_4        = 0x08U,    /*!< The active channel is 4     */
-  HAL_TIM_ACTIVE_CHANNEL_5        = 0x10U,    /*!< The active channel is 5     */
-  HAL_TIM_ACTIVE_CHANNEL_6        = 0x20U,    /*!< The active channel is 6     */
-  HAL_TIM_ACTIVE_CHANNEL_CLEARED  = 0x00U     /*!< All active channels cleared */
-} TIM_ActiveChannel;
 
 
 typedef struct 
 {
   TIM_TypeDef                          *Instance;         
   TIM_TimeBaseInitTypeDef               Init;     
-  TIM_ActiveChannel                     Channel;   //ÊÇ·ñÐèÒª£¿
-  /*    //Not yet considered          
-  TIM_OCInitTypeDef                     OC_Init;
-  TIM_ICInitTypeDef                     IC_Init;
-  */
 }TIM_HandleTypeDef;
 
 

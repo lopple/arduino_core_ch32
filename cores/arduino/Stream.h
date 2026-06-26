@@ -54,7 +54,37 @@ class Stream : public Print {
     int timedPeek();    // private method to peek stream with timeout
     int peekNextDigit(LookaheadMode lookahead, bool detectDecimal); // returns the next numeric digit in the stream or -1 if timeout
 
+#if defined(CORE_LIGHTWEIGHT_PRINT)
+    int (*_available)(void*);
+    int (*_read)(void*);
+    int (*_peek)(void*);
+#endif
+
   public:
+#if defined(CORE_LIGHTWEIGHT_PRINT)
+    int available()
+    {
+      if (_available) return _available(_write_ctx);
+      return 0;
+    }
+    int read()
+    {
+      if (_read) return _read(_write_ctx);
+      return -1;
+    }
+    int peek()
+    {
+      if (_peek) return _peek(_write_ctx);
+      return -1;
+    }
+
+    Stream(size_t (*write_char)(void*, uint8_t), void* ctx,
+           int (*available_func)(void*), int (*read_func)(void*), int (*peek_func)(void*))
+      : Print(write_char, ctx), _available(available_func), _read(read_func), _peek(peek_func)
+    {
+      _timeout = 1000;
+    }
+#else
     virtual int available() = 0;
     virtual int read() = 0;
     virtual int peek() = 0;
@@ -63,6 +93,7 @@ class Stream : public Print {
     {
       _timeout = 1000;
     }
+#endif
 
     // parsing methods
 
@@ -113,7 +144,11 @@ class Stream : public Print {
     float parseFloat(LookaheadMode lookahead = SKIP_ALL, char ignore = NO_IGNORE_CHAR);
     // float version of parseInt
 
+#if defined(CORE_LIGHTWEIGHT_PRINT)
+    size_t readBytes(char *buffer, size_t length);  // read chars from stream into buffer
+#else
     virtual size_t readBytes(char *buffer, size_t length);  // read chars from stream into buffer
+#endif
     size_t readBytes(uint8_t *buffer, size_t length)
     {
       return readBytes((char *)buffer, length);
@@ -121,7 +156,11 @@ class Stream : public Print {
     // terminates if length characters have been read or timeout (see setTimeout)
     // returns the number of characters placed in the buffer (0 means no valid data found)
 
+#if defined(CORE_LIGHTWEIGHT_PRINT)
+    size_t readBytesUntil(char terminator, char *buffer, size_t length);  // as readBytes with terminator character
+#else
     virtual size_t readBytesUntil(char terminator, char *buffer, size_t length);  // as readBytes with terminator character
+#endif
     size_t readBytesUntil(char terminator, uint8_t *buffer, size_t length)
     {
       return readBytesUntil(terminator, (char *)buffer, length);

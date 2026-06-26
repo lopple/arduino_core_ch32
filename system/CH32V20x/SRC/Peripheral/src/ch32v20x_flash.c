@@ -243,7 +243,7 @@ FLASH_Status FLASH_EraseOptionBytes(void)
         /* Write 0xFF */
         FLASH->CTLR |= CR_OPTPG_Set;
 
-        for(i = 0; i < 8; i++){
+        for(i = 0; i < 64; i++){
             *(uint16_t *)(Address + 2 * i) = 0x00FF;
             while(FLASH->STATR & SR_BSY);
         }
@@ -338,7 +338,7 @@ FLASH_Status FLASH_ProgramOptionByteData(uint32_t Address, uint8_t Data)
     FLASH_Status status = FLASH_COMPLETE;
     uint32_t     Addr = 0x1FFFF800;
     __IO uint8_t i;
-    uint16_t     pbuf[8];
+    uint16_t     pbuf[64];
 
     status = FLASH_WaitForLastOperation(ProgramTimeout);
     if(status == FLASH_COMPLETE)
@@ -347,7 +347,7 @@ FLASH_Status FLASH_ProgramOptionByteData(uint32_t Address, uint8_t Data)
         FLASH->OBKEYR = FLASH_KEY2;
 
         /* Read optionbytes */
-        for(i = 0; i < 8; i++){
+        for(i = 0; i < 64; i++){
             pbuf[i] = *(uint16_t *)(Addr + 2 * i);
         }
 
@@ -362,7 +362,7 @@ FLASH_Status FLASH_ProgramOptionByteData(uint32_t Address, uint8_t Data)
 
         FLASH->CTLR |= CR_OPTPG_Set;
 
-        for(i = 0; i < 8; i++){
+        for(i = 0; i < 64; i++){
             *(uint16_t *)(Addr + 2 * i) = pbuf[i];
             while(FLASH->STATR & SR_BSY) ;
         }
@@ -389,7 +389,7 @@ FLASH_Status FLASH_EnableWriteProtection(uint32_t FLASH_Sectors)
     FLASH_Status status = FLASH_COMPLETE;
     uint32_t     Addr = 0x1FFFF800;
     __IO uint8_t i;
-    uint16_t     pbuf[8];
+    uint16_t     pbuf[64];
 
     FLASH_Sectors = (uint32_t)(~FLASH_Sectors);
     WRP0_Data = (uint16_t)(FLASH_Sectors & WRP0_Mask);
@@ -405,7 +405,7 @@ FLASH_Status FLASH_EnableWriteProtection(uint32_t FLASH_Sectors)
         FLASH->OBKEYR = FLASH_KEY2;
 
         /* Read optionbytes */
-        for(i = 0; i < 8; i++){
+        for(i = 0; i < 64; i++){
             pbuf[i] = *(uint16_t *)(Addr + 2 * i);
         }
 
@@ -422,7 +422,7 @@ FLASH_Status FLASH_EnableWriteProtection(uint32_t FLASH_Sectors)
         pbuf[7] = WRP3_Data;
 
         FLASH->CTLR |= CR_OPTPG_Set;
-        for(i = 0; i < 8; i++){
+        for(i = 0; i < 64; i++){
             *(uint16_t *)(Addr + 2 * i) = pbuf[i];
             while(FLASH->STATR & SR_BSY);
         }
@@ -446,7 +446,7 @@ FLASH_Status FLASH_ReadOutProtection(FunctionalState NewState)
     FLASH_Status status = FLASH_COMPLETE;
     uint32_t     Addr = 0x1FFFF800;
     __IO uint8_t i;
-    uint16_t     pbuf[8];
+    uint16_t     pbuf[64];
 
     status = FLASH_WaitForLastOperation(EraseTimeout);
     if(status == FLASH_COMPLETE)
@@ -455,7 +455,7 @@ FLASH_Status FLASH_ReadOutProtection(FunctionalState NewState)
         FLASH->OBKEYR = FLASH_KEY2;
 
         /* Read optionbytes */
-        for(i = 0; i < 8; i++){
+        for(i = 0; i < 64; i++){
             pbuf[i] = *(uint16_t *)(Addr + 2 * i);
         }
 
@@ -472,7 +472,7 @@ FLASH_Status FLASH_ReadOutProtection(FunctionalState NewState)
             pbuf[0] = 0x00FF;
 
         FLASH->CTLR |= CR_OPTPG_Set;
-        for(i = 0; i < 8; i++){
+        for(i = 0; i < 64; i++){
             *(uint16_t *)(Addr + 2 * i) = pbuf[i];
             while(FLASH->STATR & SR_BSY);
         }
@@ -504,7 +504,7 @@ FLASH_Status FLASH_UserOptionByteConfig(uint16_t OB_IWDG, uint16_t OB_STOP, uint
     FLASH_Status status = FLASH_COMPLETE;
     uint32_t     Addr = 0x1FFFF800;
     __IO uint8_t i;
-    uint16_t     pbuf[8];
+    uint16_t     pbuf[64];
 
     FLASH->OBKEYR = FLASH_KEY1;
     FLASH->OBKEYR = FLASH_KEY2;
@@ -513,7 +513,7 @@ FLASH_Status FLASH_UserOptionByteConfig(uint16_t OB_IWDG, uint16_t OB_STOP, uint
     if(status == FLASH_COMPLETE)
     {
         /* Read optionbytes */
-        for(i = 0; i < 8; i++){
+        for(i = 0; i < 64; i++){
             pbuf[i] = *(uint16_t *)(Addr + 2 * i);
         }
 
@@ -527,7 +527,7 @@ FLASH_Status FLASH_UserOptionByteConfig(uint16_t OB_IWDG, uint16_t OB_STOP, uint
         pbuf[1] = OB_IWDG | (uint16_t)(OB_STOP | (uint16_t)(OB_STDBY | ((uint16_t)0xF8)));
 
         FLASH->CTLR |= CR_OPTPG_Set;
-        for(i = 0; i < 8; i++){
+        for(i = 0; i < 64; i++){
             *(uint16_t *)(Addr + 2 * i) = pbuf[i];
             while(FLASH->STATR & SR_BSY);
         }

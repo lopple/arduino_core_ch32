@@ -91,9 +91,9 @@ cd ~/.arduino15/packages/WCH/tools/beforeinstall/1.0.0
 After authorization, it will copy or generate some necessary libraries and rules:
 
 ```text
-Copy Libs
+Copy Libs
 [sudo] password for temperslee: 
-Register new Libs
+Register new Libs
 copy rules
 Reload rules
 DONE

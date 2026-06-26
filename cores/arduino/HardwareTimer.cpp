@@ -157,7 +157,7 @@ void HardwareTimer::setup(TIM_TypeDef *instance)
   // Initialize channel mode and complementary
   for (int i = 0; i < TIMER_CHANNELS; i++) {
 #if defined(TIM_CC1NE)
-    isComplementaryChannel[i] = false;  //如果有互补通道定义
+    isComplementaryChannel[i] = false;  // If complementary channel is defined
 #endif
     _ChannelMode[i] = TIMER_DISABLED;    
   }
@@ -479,7 +479,7 @@ void HardwareTimer::resumeChannel(uint32_t channel)
     case TIMER_INPUT_FREQ_DUTY_MEASUREMENT: {
         TIM_CCxCmd( _timerObj.handle.Instance, timChannel, TIM_CCx_Enable );
         // Enable 2nd associated channel
-        //两个关联通道，配置为捕获通道   1 & 2  /  3 & 4        
+        // Two associated channels, configured as capture channels 1 & 2 / 3 & 4
         timAssociatedInputChannel = getAssociatedChannel(channel);
         TIM_CCxCmd( _timerObj.handle.Instance, getLLChannel(timAssociatedInputChannel), TIM_CCx_Enable );
        
@@ -783,7 +783,14 @@ void HardwareTimer::setMode(uint32_t channel, TimerModes_t mode, PinName pin)
 
   /* Configure some default values. Maybe overwritten later */
   channelOC.TIM_OCMode = TIMER_NOT_USED;  //set default value 0xFFFF
-
+  
+  // Enable preload (shadow registers) for timer channel to prevent output glitches
+  // Ensures compare register updates only take effect at timer overflow/update events
+  TIM_OC1PreloadConfig(_timerObj.handle.Instance, TIM_OCPreload_Enable); 
+  TIM_OC2PreloadConfig(_timerObj.handle.Instance, TIM_OCPreload_Enable);
+  TIM_OC3PreloadConfig(_timerObj.handle.Instance, TIM_OCPreload_Enable);
+  TIM_OC4PreloadConfig(_timerObj.handle.Instance, TIM_OCPreload_Enable);
+  
   // channelOC.Pulse = __HAL_TIM_GET_COMPARE(&(_timerObj.handle), timChannel);  // keep same value already written in hardware register
   channelOC.TIM_Pulse =  (((timChannel) == TIM_Channel_1) ? (_timerObj.handle.Instance->CH1CVR) :\
                           ((timChannel) == TIM_Channel_2) ? (_timerObj.handle.Instance->CH2CVR) :\
