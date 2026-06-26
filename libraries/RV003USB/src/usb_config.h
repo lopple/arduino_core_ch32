@@ -268,16 +268,26 @@ static const uint8_t config_descriptor[] = {  //Mostly stolen from a USB mouse I
 };
 
 #define STR_MANUFACTURER u"CNLohr"
-#define STR_PRODUCT      u"RV003USB"
-#ifndef STR_SERIAL
-#define STR_SERIAL       u"000"
-#endif
+#define STR_PRODUCT      u"RV003USB HID Monitor"
+
+#define RV003USB_SERIAL_ESIG_UNIID1_ADDR 0x1FFFF7E8UL
+#define RV003USB_SERIAL_PREFIX_LENGTH    6
+#define RV003USB_SERIAL_HEX_DIGITS       12
+#define RV003USB_SERIAL_STRING_LENGTH    (RV003USB_SERIAL_PREFIX_LENGTH + RV003USB_SERIAL_HEX_DIGITS)
+#define RV003USB_SERIAL_DESCRIPTOR_LENGTH (2 + (RV003USB_SERIAL_STRING_LENGTH * 2))
 
 struct usb_string_descriptor_struct {
 	uint8_t bLength;
 	uint8_t bDescriptorType;
 	uint16_t wString[];
 };
+
+struct rv003usb_serial_string_descriptor_struct {
+	uint8_t bLength;
+	uint8_t bDescriptorType;
+	uint16_t wString[RV003USB_SERIAL_STRING_LENGTH];
+};
+
 const static struct usb_string_descriptor_struct string0 __attribute__((section(".rodata"))) = {
 	4,
 	3,
@@ -293,11 +303,53 @@ const static struct usb_string_descriptor_struct string2 __attribute__((section(
 	3,
 	STR_PRODUCT
 };
-const static struct usb_string_descriptor_struct string3 __attribute__((section(".rodata")))  = {
-	sizeof(STR_SERIAL),
+
+static struct rv003usb_serial_string_descriptor_struct string3 = {
+	RV003USB_SERIAL_DESCRIPTOR_LENGTH,
 	3,
-	STR_SERIAL
+	{ 'R', 'V', '0', '0', '3', '-', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0' }
 };
+
+static uint32_t rv003usbHashUniqueId(uint32_t hash)
+{
+	volatile const uint32_t *uniqueIdWords = (volatile const uint32_t *)RV003USB_SERIAL_ESIG_UNIID1_ADDR;
+
+	for (uint8_t wordIndex = 0; wordIndex < 3; wordIndex++) {
+		uint32_t word = uniqueIdWords[wordIndex];
+		for (uint8_t byteIndex = 0; byteIndex < 4; byteIndex++) {
+			hash ^= (uint8_t)word;
+			hash *= 16777619UL;
+			word >>= 8;
+		}
+	}
+
+	return hash;
+}
+
+static void rv003usbWriteHexToSerial(uint8_t offset, uint32_t value, uint8_t digits)
+{
+	static const char hexDigits[] = "0123456789ABCDEF";
+
+	for (uint8_t digit = 0; digit < digits; digit++) {
+		uint8_t shift = (uint8_t)((digits - 1U - digit) * 4U);
+		string3.wString[offset + digit] = (uint16_t)hexDigits[(value >> shift) & 0x0fU];
+	}
+}
+
+static void rv003usbInitSerialStringDescriptor(void)
+{
+	static uint8_t initialized = 0;
+
+	if (initialized) {
+		return;
+	}
+	initialized = 1;
+
+	// Build RV003-XXXXXXXXXXXX from CH32V003 ESIG UNIID1..3. The two
+	// 32-bit FNV-1a-style hashes avoid 64-bit arithmetic on this tiny target.
+	rv003usbWriteHexToSerial(RV003USB_SERIAL_PREFIX_LENGTH, rv003usbHashUniqueId(2166136261UL) & 0xffffUL, 4);
+	rv003usbWriteHexToSerial(RV003USB_SERIAL_PREFIX_LENGTH + 4, rv003usbHashUniqueId(2166136261UL ^ 0x9e3779b9UL), 8);
+}
 
 // This table defines which descriptor data is sent for each specific
 // request from the host (in wValue and wIndex).
@@ -315,7 +367,7 @@ const static struct descriptor_list_struct {
 	{0x00000300, (const uint8_t *)&string0, 4},
 	{0x04090301, (const uint8_t *)&string1, sizeof(STR_MANUFACTURER)},
 	{0x04090302, (const uint8_t *)&string2, sizeof(STR_PRODUCT)},
-	{0x04090303, (const uint8_t *)&string3, sizeof(STR_SERIAL)}
+	{0x04090303, (const uint8_t *)&string3, sizeof(string3)}
 };
 #define DESCRIPTOR_LIST_ENTRIES ((sizeof(descriptor_list))/(sizeof(struct descriptor_list_struct)) )
 
