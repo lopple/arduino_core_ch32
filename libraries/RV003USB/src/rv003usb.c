@@ -52,6 +52,79 @@ struct rv003usb_internal rv003usb_internal_data;
 #define LOCAL_CONCAT(A, B) A##B
 #define LOCAL_EXP(A, B) LOCAL_CONCAT(A,B)
 
+#define RV003USB_DM_PIN_MASK                      (1U << USB_PIN_DM)
+#define RV003USB_DM_CFGLR_MASK                    (0xFU << (USB_PIN_DM * 4U))
+#define RV003USB_DM_OUTPUT_PP_50MHZ               (GPIO_CFGLR_OUT_50Mhz_PP << (USB_PIN_DM * 4U))
+#if RV003USB_USE_REBOOT_FEATURE_REPORT
+// Busy-loop counts, not microsecond values. At 48 MHz these approximate a
+// 10 ms control-transfer settle and a 50 ms USB disconnect pulse.
+#define RV003USB_REBOOT_CONTROL_SETTLE_LOOP_COUNT 480000UL
+#define RV003USB_REBOOT_DISCONNECT_LOOP_COUNT     2400000UL
+
+#define RV003USB_REBOOT_REPORT_VALUE              0x000003fdUL
+#define RV003USB_CONTROL_VALUE_MASK               0x0000ffffUL
+
+static volatile uint8_t rv003usb_reboot_requested;
+static volatile uint8_t rv003usb_reboot_armed;
+
+static void rv003usb_wait_loop_count( uint32_t count )
+{
+	while( count-- )
+	{
+		__asm__ volatile( "nop" );
+	}
+}
+
+static uint8_t rv003usb_is_reboot_magic( const uint8_t * data )
+{
+	if( data[0] == 0xfd && data[1] == 0x12 && data[2] == 0x34 &&
+		data[3] == 0xaa && data[4] == 0xbb && data[5] == 0xcc && data[6] == 0xdd )
+	{
+		return 1;
+	}
+
+	// SET_REPORT carries the report ID in wValue. Some host HID stacks may omit
+	// the report ID from the following DATA packet.
+	return data[0] == 0x12 && data[1] == 0x34 && data[2] == 0xaa &&
+		data[3] == 0xbb && data[4] == 0xcc && data[5] == 0xdd;
+}
+
+static void rv003usb_request_bootloader_reboot( void )
+{
+	FLASH->BOOT_MODEKEYR = FLASH_KEY1;
+	FLASH->BOOT_MODEKEYR = FLASH_KEY2;
+	FLASH->STATR = 1<<14; // 1<<14 is zero, so, boot bootloader code. Unset for user code.
+	FLASH->CTLR = CR_LOCK_Set;
+	RCC->RSTSCKR |= 0x1000000;
+	rv003usb_reboot_requested = 1;
+}
+
+static void rv003usb_force_disconnect( void )
+{
+	GPIO_TypeDef * usbGpio = LOCAL_EXP( GPIO, USB_PORT );
+
+	__disable_irq();
+	EXTI->INTENR &= ~RV003USB_DM_PIN_MASK;
+	EXTI->FTENR &= ~RV003USB_DM_PIN_MASK;
+	EXTI->RTENR &= ~RV003USB_DM_PIN_MASK;
+	RCC->APB2PCENR |= LOCAL_EXP( RCC_APB2Periph_GPIO, USB_PORT ) | RCC_APB2Periph_AFIO;
+	usbGpio->CFGLR = ( usbGpio->CFGLR & ~RV003USB_DM_CFGLR_MASK ) | RV003USB_DM_OUTPUT_PP_50MHZ;
+	usbGpio->BCR = RV003USB_DM_PIN_MASK;
+	rv003usb_wait_loop_count( RV003USB_REBOOT_DISCONNECT_LOOP_COUNT );
+}
+
+static void rv003usb_service_reboot_request( void )
+{
+	if( !rv003usb_reboot_requested )
+	{
+		return;
+	}
+
+	rv003usb_wait_loop_count( RV003USB_REBOOT_CONTROL_SETTLE_LOOP_COUNT );
+	rv003usb_force_disconnect();
+	NVIC_SystemReset();
+}
+#endif
 void usb_setup()
 {
 	rv003usb_internal_data.se0_windup = 0;
@@ -169,23 +242,6 @@ void usb_pid_handle_in( uint32_t addr, uint8_t * data, uint32_t endp, uint32_t u
 	uint8_t * sendnow;
 	int sendtok = e->toggle_in?0b01001011:0b11000011;
 
-
-
-#if RV003USB_USE_REBOOT_FEATURE_REPORT
-	if( ist->reboot_armed == 2 )
-	{
-		usb_send_empty( sendtok );
-
-		// Initiate boot into bootloader
-		FLASH->BOOT_MODEKEYR = FLASH_KEY1;
-		FLASH->BOOT_MODEKEYR = FLASH_KEY2;
-		FLASH->STATR = 1<<14; // 1<<14 is zero, so, boot bootloader code. Unset for user code.
-		FLASH->CTLR = CR_LOCK_Set;
-		RCC->RSTSCKR |= 0x1000000;
-		PFIC->SCTLR = 1<<31;
-	}
-#endif
-
 #if RV003USB_HANDLE_IN_REQUEST
 	if( e->custom || endp )
 	{
@@ -273,18 +329,13 @@ void usb_pid_handle_data( uint32_t this_token, uint8_t * data, uint32_t which_da
 	if( epno || ( !ist->setup_request && length > 0 )  )
 	{
 #if RV003USB_USE_REBOOT_FEATURE_REPORT
-		if( ist->reboot_armed )
+		if( rv003usb_reboot_armed )
 		{
-			uint32_t * base = __builtin_assume_aligned( data_in, 4 );
-			if( epno == 0 && base[0] == 0xaa3412fd && (base[1] & 0x00ffffff) == 0x00ddccbb )
+			rv003usb_reboot_armed = 0;
+			if( epno == 0 && rv003usb_is_reboot_magic( data_in ) )
 			{
-				e->count = 7;
-				ist->reboot_armed = 2;
+				rv003usb_request_bootloader_reboot();
 				goto just_ack;
-			}
-			else
-			{
-				ist->reboot_armed = 0;
 			}
 		}
 #endif
@@ -371,7 +422,7 @@ void usb_pid_handle_data( uint32_t this_token, uint8_t * data, uint32_t which_da
 		{
 			// Class request (Will be writing)  This is hid_send_feature_report
 #if RV003USB_USE_REBOOT_FEATURE_REPORT
-			if( wvi == 0x000003fd ) ist->reboot_armed = 1;
+			rv003usb_reboot_armed = ( ( wvi & RV003USB_CONTROL_VALUE_MASK ) == RV003USB_REBOOT_REPORT_VALUE );
 #endif
 #if RV003USB_HID_FEATURES
 			usb_handle_hid_set_report_start( e, wLength, wvi );
@@ -495,4 +546,10 @@ void usb_pid_handle_setup( uint32_t addr, uint8_t * data, uint32_t endp, uint32_
 }
 #endif
 
+#if RV003USB_USE_REBOOT_FEATURE_REPORT
+void rv003usb_core_poll( void )
+{
+	rv003usb_service_reboot_request();
+}
+#endif
 #endif

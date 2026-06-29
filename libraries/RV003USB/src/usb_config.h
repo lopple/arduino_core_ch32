@@ -166,6 +166,14 @@ static const uint8_t monitor_hid_desc[] = {
 		HID_REPORT_ID( 0xA1 ),
 		HID_USAGE( 0x02 ),
 		HID_INPUT( 0x02 ),
+		// rv003usb-compatible USER-to-BOOT reset.
+		// The report is FD 12 34 AA BB CC DD; Windows still sends a
+		// FeatureReportByteLength-sized buffer, but the device only checks
+		// the leading magic bytes.
+		HID_REPORT_COUNT( 6 ),
+		HID_REPORT_ID( 0xFD ),
+		HID_USAGE( 0x03 ),
+		HID_FEATURE( 0x02 ),
 	HID_COLLECTION_END,
 };
 

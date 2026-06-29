@@ -3,6 +3,8 @@
 #include "Arduino.h"
 #include "debug.h"
 
+extern "C" void rv003usb_core_poll(void) __attribute__((weak));
+
 
 /*
  * \brief Main entry point of Arduino application
@@ -27,6 +29,9 @@ int main( void )
             TinyUSB_Device_FlushCDC();
         }
 #endif
+        if (rv003usb_core_poll) {
+            rv003usb_core_poll();
+        }
     } while (1);
 
     return 0;
