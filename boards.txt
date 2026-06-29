@@ -24,6 +24,8 @@ CH32V00x_EVT.upload.maximum_size=0
 CH32V00x_EVT.upload.maximum_data_size=0
 CH32V00x_EVT.upload_port.vid=1209
 CH32V00x_EVT.upload_port.pid=c003
+CH32V00x_EVT.upload.tool=minichlink
+CH32V00x_EVT.upload.tool.default=minichlink
 CH32V00x_EVT.build.variant_h=variant_{build.board}.h
 CH32V00x_EVT.debug.tool=gdb-WCH_LinkE
 
