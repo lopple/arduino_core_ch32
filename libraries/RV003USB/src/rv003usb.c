@@ -55,6 +55,12 @@ struct rv003usb_internal rv003usb_internal_data;
 #define RV003USB_DM_PIN_MASK                      (1U << USB_PIN_DM)
 #define RV003USB_DM_CFGLR_MASK                    (0xFU << (USB_PIN_DM * 4U))
 #define RV003USB_DM_OUTPUT_PP_50MHZ               (GPIO_CFGLR_OUT_50Mhz_PP << (USB_PIN_DM * 4U))
+#define RV003USB_CYCLES_PER_MICROSECOND           (F_CPU / 1000000U)
+#ifdef USB_PIN_DPU
+#define RV003USB_DPU_PIN_MASK                     (1U << USB_PIN_DPU)
+#define RV003USB_DPU_CFGLR_MASK                   (0xFU << (USB_PIN_DPU * 4U))
+#define RV003USB_DPU_OUTPUT_PP_50MHZ              (GPIO_CFGLR_OUT_50Mhz_PP << (USB_PIN_DPU * 4U))
+#endif
 #if RV003USB_USE_REBOOT_FEATURE_REPORT
 // Busy-loop counts, not microsecond values. At 48 MHz these approximate a
 // 10 ms control-transfer settle and a 50 ms USB disconnect pulse.
@@ -125,6 +131,46 @@ static void rv003usb_service_reboot_request( void )
 	NVIC_SystemReset();
 }
 #endif
+#if !RV003USB_BOOTLOADER
+static void rv003usb_wait_microseconds( uint32_t us )
+{
+	uint32_t startTicks = (uint32_t)SysTick->CNT;
+	uint32_t waitTicks = us * RV003USB_CYCLES_PER_MICROSECOND;
+
+	while( (uint32_t)( (uint32_t)SysTick->CNT - startTicks ) < waitTicks )
+	{
+	}
+}
+
+static void rv003usb_preconnect_disconnect( void )
+{
+	GPIO_TypeDef * usbGpio = LOCAL_EXP( GPIO, USB_PORT );
+	uint32_t savedCfglr = usbGpio->CFGLR;
+	uint32_t savedIntenr = EXTI->INTENR;
+	uint32_t cfglrMask = RV003USB_DM_CFGLR_MASK;
+	uint32_t cfglrValue = RV003USB_DM_OUTPUT_PP_50MHZ;
+
+#ifdef USB_PIN_DPU
+	cfglrMask |= RV003USB_DPU_CFGLR_MASK;
+	cfglrValue |= RV003USB_DPU_OUTPUT_PP_50MHZ;
+#endif
+
+	// These delays are empirical values from limited hardware testing;
+	// they are not guaranteed by the USB specification.
+	EXTI->INTENR &= ~RV003USB_DM_PIN_MASK;
+	usbGpio->CFGLR = ( usbGpio->CFGLR & ~cfglrMask ) | cfglrValue;
+#ifdef USB_PIN_DPU
+	usbGpio->BCR = RV003USB_DPU_PIN_MASK;
+#endif
+	usbGpio->BCR = RV003USB_DM_PIN_MASK;
+	rv003usb_wait_microseconds( 100000 );
+
+	usbGpio->CFGLR = savedCfglr;
+	rv003usb_wait_microseconds( 1000 );
+	EXTI->INTFR = RV003USB_DM_PIN_MASK;
+	EXTI->INTENR = savedIntenr;
+}
+#endif
 void usb_setup()
 {
 	rv003usb_internal_data.se0_windup = 0;
@@ -132,6 +178,9 @@ void usb_setup()
 
 	// Enable GPIOs, TIMERs
 	RCC->APB2PCENR |= LOCAL_EXP( RCC_APB2Periph_GPIO, USB_PORT ) | RCC_APB2Periph_AFIO;
+#if !RV003USB_BOOTLOADER
+	rv003usb_preconnect_disconnect();
+#endif
 
 #if defined( RV003USB_DEBUG_TIMING ) && RV003USB_DEBUG_TIMING
 	{
